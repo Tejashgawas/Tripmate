@@ -28,5 +28,5 @@ COPY . .
 # Expose port 8000
 EXPOSE 8000
 
-# Run app using uvicorn with 4 workers, port from ENV PORT
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
