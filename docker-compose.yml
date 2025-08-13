@@ -16,7 +16,7 @@ services:
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS}
 
       # Redis settings - note hostname is redis service name
-      REDIS_URL: "redis://redis:6379/0"
+      REDIS_URL: ${REDIS_URL}
       REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME}
       MAX_CONCURRENT_REFRESHES: ${MAX_CONCURRENT_REFRESHES}
 
