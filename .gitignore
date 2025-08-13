@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.sqlite3
+
+# Environment
+.env
+myenv/
+venv/
+.env.*
+
+# Coverage & testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Alembic migrations cache
+alembic/__pycache__/
+alembic/versions/__pycache__/
+alembic/env.py
+alembic/
+alembic.ini
+
+# Local development files
+.DS_Store
+*.log
+
+# Docker
+*.pid
+*.seed
+nginx.conf
+# VSCode
+.vscode/
+
+# Ignore seeds if they are large dummy data
+seeds/
+
+# Locust & benchmark results
+*.csv
+*.html
+locustfile.py
+cache_bench.py
+print_routes.py

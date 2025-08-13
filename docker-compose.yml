@@ -1,0 +1,93 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+      
+      # Database settings
+      DATABASE_URL: "postgresql+asyncpg://postgres:Trip%40mate%40098@db:5432/tripmate"
+
+      # JWT settings
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS}
+
+      # Redis settings - note hostname is redis service name
+      REDIS_URL: "redis://redis:6379/0"
+      REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME}
+      MAX_CONCURRENT_REFRESHES: ${MAX_CONCURRENT_REFRESHES}
+
+      # SMTP settings
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+
+      # OpenRouter API settings
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      BASE_URL: ${BASE_URL}
+
+      # Google OAuth settings
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      AUTH_SECRET: ${AUTH_SECRET}
+
+      # Booking.com API settings
+      BOOKING_COM_API_KEY: ${BOOKING_COM_API_KEY}
+      BOOKING_COM_API_HOST: ${BOOKING_COM_API_HOST}
+      BOOKING_COM_BASE_URL: ${BOOKING_COM_BASE_URL}
+
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+
+    volumes:
+      - .:/app
+    networks:
+      - tripmate-network
+
+  db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Trip@mate@098
+      POSTGRES_DB: tripmate
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 5
+      timeout: 5s
+    networks:
+      - tripmate-network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+      timeout: 5s
+    networks:
+      - tripmate-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  tripmate-network:
+    driver: bridge
