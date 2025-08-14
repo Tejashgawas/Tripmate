@@ -50,7 +50,8 @@ class Settings(BaseSettings):
         "http://localhost:8080", 
         "http://127.0.0.1:8080",
         "http://localhost:3000",
-        "https://preview-tripmate-kzmowbhku12fye9weaev.vusercontent.net"
+        "https://preview-tripmate-kzmowbhku12fye9weaev.vusercontent.net",
+        "https://preview-tripmate-kzmnno8q490jq4fop7x1.vusercontent.net"
     ]
     
 
