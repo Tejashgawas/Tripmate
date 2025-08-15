@@ -44,15 +44,12 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "TripMate API"
     PROJECT_VERSION: str = "1.0.0" 
     PROJECT_DESCRIPTION: str = "A comprehensive trip management API"
-    BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8080", 
-        "http://127.0.0.1:8080",
-        "http://localhost:3000",
-        "https://preview-tripmate-kzmowbhku12fye9weaev.vusercontent.net",
-        "https://preview-tripmate-kzmnno8q490jq4fop7x1.vusercontent.net"
-    ]
+    # BACKEND_CORS_ORIGINS: List[str] = [
+    #     "http://localhost:3000",
+    #     "http://127.0.0.1:3000",
+    #     "http://localhost:8080", 
+    #     "http://127.0.0.1:8080"
+    # ]
     
 
 
