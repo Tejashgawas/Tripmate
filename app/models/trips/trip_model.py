@@ -23,7 +23,7 @@ class Trip(Base):
     budget = Column(Integer, nullable=False)
     trip_type = Column(Enum(TripTypeEnum), nullable=False)
 
-    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    creator_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     creator = relationship("User", back_populates="created_trips")
 
     trip_code = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4())[:8])

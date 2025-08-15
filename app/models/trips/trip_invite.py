@@ -13,8 +13,8 @@ class TripInvite(Base):
     __tablename__ = "trip_invites"
 
     id = Column(Integer, primary_key=True, index=True)
-    trip_id = Column(Integer, ForeignKey("trips.id"))
-    inviter_id = Column(Integer, ForeignKey("users.id"))
+    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"))
+    inviter_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     invitee_email = Column(String, index=True)
     invite_code = Column(String, unique=True, index=True)
     status = Column(Enum(InviteStatus), default=InviteStatus.pending)

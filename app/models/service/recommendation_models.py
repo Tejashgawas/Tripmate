@@ -7,8 +7,8 @@ class TripRecommendedService(Base):
     __tablename__ = "trip_recommended_services"
 
     id = Column(Integer, primary_key=True)
-    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"), nullable=False)
-    service_id = Column(Integer, ForeignKey("services.id", ondelete="CASCADE"), nullable=False)
+    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"))
+    service_id = Column(Integer, ForeignKey("services.id", ondelete="CASCADE"))
     service_type = Column(String, nullable=False)
     rank = Column(Integer, nullable=True)  # 1..N order in the list
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -26,10 +26,10 @@ class TripServiceVote(Base):
     __tablename__ = "trip_service_votes"
 
     id = Column(Integer, primary_key=True)
-    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     service_type = Column(String, nullable=False)
-    service_id = Column(Integer, ForeignKey("services.id", ondelete="CASCADE"), nullable=False)
+    service_id = Column(Integer, ForeignKey("services.id", ondelete="CASCADE"))
     created_at = Column(DateTime, default=datetime.utcnow)
 
     trip = relationship("Trip", backref="service_votes",passive_deletes=True)

@@ -4,8 +4,8 @@ from app.core.database import Base
 class TripMemberPreference(Base):
     __tablename__ = "trip_member_preferences"
     id = Column(Integer, primary_key=True, index=True)
-    trip_id = Column(Integer, ForeignKey("trips.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     budget = Column(Float, nullable=True)
     accommodation_type = Column(String, nullable=True)
     food_preferences = Column(String, nullable=True)
