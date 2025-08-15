@@ -29,6 +29,9 @@ async def register(
     access_token = create_access_token({"sub": str(new_user.id)})
     refreshtoken = await refresh_token(str(new_user.id), redis_client)
     max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
+
+   
+
     if response is not None:
         response.set_cookie(
             key=settings.REFRESH_COOKIE_NAME,
@@ -43,9 +46,7 @@ async def register(
     return JSONResponse(
         status_code=201,
         content={
-            **UserOut.from_orm(new_user).dict(),
-            "access_token": access_token,
-            "token_type": "bearer"
+            **UserOut.from_orm(new_user).dict()
         }
     )
 
@@ -70,10 +71,9 @@ async def refresh_token_route(request: Request, response: Response,redis_client 
         )
     
     # Call service logic
-    new_access_token = await auth_service.refresh_access_token(refresh_token,redis_client)
+    new_access_return = await auth_service.refresh_access_token(refresh_token,redis_client)
+    return new_access_return
 
-    # Send new access token in response (usually JSON)
-    return {"access_token": new_access_token}
 
 @router.post("/logout")
 async def logout(
@@ -131,6 +131,17 @@ async def google_callback(
     ):
 
     user_data = await auth_service.handle_google_callback(request, db, redis_client)
+    #set access token
+    response.set_cookie(
+        key="access_token",
+        value=user_data["access_token"],
+        httponly=True,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
+        domain=settings.COOKIE_DOMAIN,
+        path="/"
+        )
     # Set refresh cookie on response from returned refresh token
     response.set_cookie(
         key=settings.REFRESH_COOKIE_NAME,
@@ -142,9 +153,8 @@ async def google_callback(
         domain=settings.COOKIE_DOMAIN,
         path="/",
     )
-    return {"access_token": user_data["access_token"], "token_type": "bearer"}
-    # Here you would typically check if the user exists in your database
-    # and create a new user if not, then log them in.
+    return {"message":"login through google successful","ok":True,"new_user":user_data["is_new_user"]}
+
 
 @router.post("/choose-role")
 async def choose_role(
