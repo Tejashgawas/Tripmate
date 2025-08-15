@@ -66,6 +66,19 @@ async def login_user(
     user_id = str(user.id)
     refreshtoken = await refresh_token(user_id,redis_client)
     max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
+       # Cookie: Access token
+    
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
+        domain=settings.COOKIE_DOMAIN,
+        path="/"
+        )
+    
     response.set_cookie(
         key=settings.REFRESH_COOKIE_NAME,
         value=refreshtoken,
@@ -78,10 +91,10 @@ async def login_user(
     )
 
 
-    return {"access_token": token, "token_type":"bearer","role": user.role}
+    return {"role": user.role}
 
 
-async def refresh_access_token(refresh_token: str,redis_client) -> str:
+async def refresh_access_token(response: Response,refresh_token: str,redis_client) -> str:
     try:
         payload = jwt.decode(
             refresh_token,
@@ -112,7 +125,19 @@ async def refresh_access_token(refresh_token: str,redis_client) -> str:
     
     # Generate new access token
     new_access_token = create_access_token({"sub": user_id})
-    return new_access_token
+    # Update access_token cookie
+    response.set_cookie(
+        key="access_token",
+        value=new_access_token,
+        httponly=True,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
+        domain=settings.COOKIE_DOMAIN,
+        path="/"
+    )
+    return {"message": "Access token refreshed"}
+
 
 async def logout_user(
     refresh_token: Optional[str],
@@ -142,7 +167,7 @@ async def logout_user(
         if jti:
             await revoke_refresh_token(user_id, jti)
 
-    return {"ok": True}
+    return {"ok": True,"message":"logout successfull"}
 
 
 async def handle_google_callback(request, db: AsyncSession, redis_client):
