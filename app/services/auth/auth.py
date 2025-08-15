@@ -78,7 +78,7 @@ async def login_user(
     )
 
 
-    return {"access_token": token, "token_type":"bearer"}
+    return {"access_token": token, "token_type":"bearer","role": user.role}
 
 
 async def refresh_access_token(refresh_token: str,redis_client) -> str:
