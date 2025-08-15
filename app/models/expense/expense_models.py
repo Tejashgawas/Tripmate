@@ -23,7 +23,11 @@ class Expense(Base):
     __tablename__ = "expenses"
 
     id = Column(Integer, primary_key=True, index=True)
-    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"), nullable=False)
+    trip_id = Column(
+    Integer,
+    ForeignKey("trips.id", ondelete="SET NULL"),
+    nullable=True
+    )
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     amount = Column(Numeric(10, 2), nullable=False)  # Total amount of the expense
@@ -38,7 +42,7 @@ class Expense(Base):
     is_split_equally = Column(Boolean, default=True)  # Whether to split equally among all members
 
     # Relationships
-    trip = relationship("Trip", backref="expenses")
+    trip = relationship("Trip", backref="expenses",passive_deletes=True)
     payer = relationship("User", foreign_keys=[paid_by])
     members = relationship("ExpenseMember", back_populates="expense", cascade="all, delete")
     splits = relationship("ExpenseSplit", back_populates="expense", cascade="all, delete")
@@ -96,7 +100,11 @@ class ExpenseSettlement(Base):
     __tablename__ = "expense_settlements"
 
     id = Column(Integer, primary_key=True, index=True)
-    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"), nullable=False)
+    trip_id = Column(
+    Integer,
+    ForeignKey("trips.id", ondelete="SET NULL"),
+    nullable=True
+    )
     from_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     to_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Numeric(10, 2), nullable=False)  # Amount being settled
@@ -106,7 +114,7 @@ class ExpenseSettlement(Base):
     is_confirmed = Column(Boolean, default=False)  # Whether the recipient has confirmed the settlement
 
     # Relationships
-    trip = relationship("Trip", backref="expense_settlements")
+    trip = relationship("Trip", backref="expense_settlements",passive_deletes=True)
     from_user = relationship("User", foreign_keys=[from_user_id])
     to_user = relationship("User", foreign_keys=[to_user_id])
 
