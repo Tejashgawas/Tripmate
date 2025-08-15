@@ -7,25 +7,30 @@ from app.models.user.user import User
 from app.core.database import get_db
 from app.core.config import settings
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 SECRET_KEY = settings.JWT_SECRET_KEY
 ALGORITHM = settings.JWT_ALGORITHM
 
 async def get_current_user(
           request: Request,
-          token: str = Depends(oauth2_scheme),
+        #   token: str = Depends(oauth2_scheme),
           db:AsyncSession=Depends(get_db)
           ):
+    
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
      # Try cookie first if header token is missing
-    if not token:
-        token = request.cookies.get("access_token")
+    # if not token:
+    #     token = request.cookies.get("access_token")
 
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated"
-        )
+    # if not token:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         detail="Not authenticated"
+    #     )
     
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
