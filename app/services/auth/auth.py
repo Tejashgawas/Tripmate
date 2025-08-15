@@ -87,7 +87,7 @@ async def login_user(
         secure=settings.COOKIE_SECURE,
         samesite="none",
         domain=settings.COOKIE_DOMAIN,
-        path="/",
+        path="/refresh",
     )
 
 
@@ -134,7 +134,7 @@ async def refresh_access_token(response: Response,refresh_token: str,redis_clien
         secure=settings.COOKIE_SECURE,
         samesite="none",
         domain=settings.COOKIE_DOMAIN,
-        path="/"
+        path="/refresh"
     )
     return {"message": "Access token refreshed"}
 
