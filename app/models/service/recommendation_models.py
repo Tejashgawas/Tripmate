@@ -13,7 +13,7 @@ class TripRecommendedService(Base):
     rank = Column(Integer, nullable=True)  # 1..N order in the list
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    trip = relationship("Trip", backref="recommended_services")
+    trip = relationship("Trip", backref="recommended_services",passive_deletes=True)
     service = relationship("Service")
 
     __table_args__ = (
@@ -32,7 +32,7 @@ class TripServiceVote(Base):
     service_id = Column(Integer, ForeignKey("services.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    trip = relationship("Trip", backref="service_votes")
+    trip = relationship("Trip", backref="service_votes",passive_deletes=True)
     user = relationship("User")
     service = relationship("Service")
 
