@@ -52,7 +52,7 @@ async def refresh_token_route(request: Request, response: Response,redis_client 
         )
     
     # Call service logic
-    new_access_return = await auth_service.refresh_access_token(refresh_token,redis_client)
+    new_access_return = await auth_service.refresh_access_token(response,refresh_token,redis_client)
     return new_access_return
 
 
