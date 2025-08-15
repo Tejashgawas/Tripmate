@@ -116,12 +116,9 @@ async def refresh_access_token(response: Response,refresh_token: str,redis_clien
         )
     
     # Verify refresh token is still in Redis (not revoked)
-    stored_jti = await redis_client.hget(f"user:{user_id}", "refresh_jti")
-    if stored_jti != jti:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token revoked"
-        )
+    exists = await redis_client.exists(f"refresh:{user_id}:{jti}")
+    if not exists:
+        raise HTTPException(status_code=401, detail="Refresh token revoked")
     
     # Generate new access token
     new_access_token = create_access_token({"sub": user_id})
