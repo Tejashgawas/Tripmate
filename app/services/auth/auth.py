@@ -74,7 +74,7 @@ async def login_user(
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite="none",
         domain=settings.COOKIE_DOMAIN,
         path="/"
         )
@@ -85,7 +85,7 @@ async def login_user(
         httponly=True,
         max_age=max_age,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite="none",
         domain=settings.COOKIE_DOMAIN,
         path="/",
     )
@@ -132,7 +132,7 @@ async def refresh_access_token(response: Response,refresh_token: str,redis_clien
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite="none",
         domain=settings.COOKIE_DOMAIN,
         path="/"
     )

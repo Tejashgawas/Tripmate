@@ -24,25 +24,6 @@ async def register(
     response: Response = None
 ):
     new_user = await auth_service.register_user(user, db)
-    # Generate access token and refresh token as in login
-    from app.core.security import create_access_token, refresh_token, settings
-    access_token = create_access_token({"sub": str(new_user.id)})
-    refreshtoken = await refresh_token(str(new_user.id), redis_client)
-    max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
-
-   
-
-    if response is not None:
-        response.set_cookie(
-            key=settings.REFRESH_COOKIE_NAME,
-            value=refreshtoken,
-            httponly=True,
-            max_age=max_age,
-            secure=settings.COOKIE_SECURE,
-            samesite="lax",
-            domain=settings.COOKIE_DOMAIN,
-            path="/",
-        )
     return JSONResponse(
         status_code=201,
         content={
@@ -83,15 +64,26 @@ async def logout(
     
 ):
     result = await auth_service.logout_user(refresh_cookie, all_sessions)
-    # Clear refresh cookie
+   # Clear refresh cookie
     response.delete_cookie(
         key=settings.REFRESH_COOKIE_NAME,
+        domain=settings.COOKIE_DOMAIN,  # must match login
+        path="/",
+        httponly=True,
+        secure=settings.COOKIE_SECURE,  # must match login
+        samesite="none"                 # must match login
+    )
+
+    # Optional: clear access token as well
+    response.delete_cookie(
+        key="access_token",
         domain=settings.COOKIE_DOMAIN,
         path="/",
         httponly=True,
-        secure=True,
-        samesite="lax"
+        secure=settings.COOKIE_SECURE,
+        samesite="none"
     )
+
     return result
 
 @router.get("/health/redis")
@@ -138,7 +130,7 @@ async def google_callback(
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite="none",
         domain=settings.COOKIE_DOMAIN,
         path="/"
         )
@@ -149,7 +141,7 @@ async def google_callback(
         httponly=True,
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite="none",
         domain=settings.COOKIE_DOMAIN,
         path="/",
     )
