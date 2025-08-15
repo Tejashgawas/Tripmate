@@ -68,7 +68,7 @@ async def logout(
     response.delete_cookie(
         key=settings.REFRESH_COOKIE_NAME,
         domain=settings.COOKIE_DOMAIN,  # must match login
-        path="/refresh",
+        path="/",
         httponly=True,
         secure=settings.COOKIE_SECURE,  # must match login
         samesite="none"                 # must match login
@@ -143,7 +143,7 @@ async def google_callback(
         secure=settings.COOKIE_SECURE,
         samesite="none",
         domain=settings.COOKIE_DOMAIN,
-        path="/refresh",
+        path="/",
     )
     return {"message":"login through google successful","ok":True,"new_user":user_data["is_new_user"]}
 
