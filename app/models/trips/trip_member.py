@@ -17,8 +17,8 @@ class TripMember(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"),nullable = False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"),nullable = False)
+    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     
     triprole_enum = sa.Enum(
         TripRole,

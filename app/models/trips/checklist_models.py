@@ -23,14 +23,14 @@ class TripChecklist(Base):
     __tablename__ = "trip_checklist"
 
     id = Column(Integer, primary_key=True, index=True)
-    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"), nullable=False)
+    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"))
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     category = Column(Enum(TaskCategory), nullable=False, default=TaskCategory.other)
     priority = Column(Enum(TaskPriority), nullable=False, default=TaskPriority.medium)
     due_date = Column(DateTime, nullable=True)
     is_completed = Column(Boolean, default=False)
-    created_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -51,9 +51,9 @@ class ChecklistAssignment(Base):
     __tablename__ = "checklist_assignments"
 
     id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("trip_checklist.id", ondelete="CASCADE"), nullable=False)
-    assigned_to = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    assigned_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    task_id = Column(Integer, ForeignKey("trip_checklist.id", ondelete="CASCADE"))
+    assigned_to = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    assigned_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     assigned_at = Column(DateTime, default=datetime.utcnow)
     notes = Column(Text, nullable=True)
 
@@ -72,8 +72,8 @@ class ChecklistCompletion(Base):
     __tablename__ = "checklist_completions"
 
     id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("trip_checklist.id", ondelete="CASCADE"), nullable=False)
-    completed_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    task_id = Column(Integer, ForeignKey("trip_checklist.id", ondelete="CASCADE"))
+    completed_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     completed_at = Column(DateTime, default=datetime.utcnow)
     notes = Column(Text, nullable=True)
 
