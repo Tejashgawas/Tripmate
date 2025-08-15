@@ -11,15 +11,28 @@ app = FastAPI(
     openapi_url=f"/openapi.json"
 )
 
+# # Set all CORS enabled origins
+# if settings.BACKEND_CORS_ORIGINS:
+#     app.add_middleware(
+#         CORSMiddleware,
+#         allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+#         allow_credentials=True,
+#         allow_methods=["*"],
+#         allow_headers=["*"],
+#     )
+
 # Set all CORS enabled origins
-if settings.BACKEND_CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=(
+        r"^(http:\/\/localhost(:\d{1,5})?|http:\/\/127\.0\.0\.1(:\d{1,5})?"
+        r"|https:\/\/preview-tripmate-[a-z0-9]+\.vusercontent\.net)$"
+    ),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Include all API routes
 app.include_router(api_router)
