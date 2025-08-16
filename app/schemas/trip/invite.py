@@ -17,6 +17,10 @@ class TripInviteResponse(BaseModel):
     status: str
     invite_code : str
     trip_code : str
+    trip_title: Optional[str] = None
+    inviter_username: Optional[str] = None
+   
+
 
     class Config:
         from_attributes = True

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends,Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.trip.invite import TripInviteCreate, TripInviteAccept, TripInviteResponse
-from app.services.trips.invite_service import create_trip_invite, accept_trip_invite,get_user_trip_invites,decline_trip_invite
+from app.services.trips.invite_service import create_trip_invite, accept_trip_invite,get_user_trip_invites,decline_trip_invite,get_user_sent_invites
 from app.dependencies.auth import get_current_user
 from app.models.user.user import User
 from app.core.database import get_db
@@ -38,6 +38,13 @@ async def view_user_invites(
     current_user: User = Depends(get_current_user)
 ):
     return await get_user_trip_invites(db, current_user)
+
+@router.get("/sent-invites", response_model=list[TripInviteResponse])
+async def view_sent_invites(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return await get_user_sent_invites(db, current_user)
 
 @router.post("/trip/invite/decline")
 async def decline_invite_post(
