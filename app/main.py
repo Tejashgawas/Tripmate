@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.routes import api_router
 from app.core.redis_lifecyle import init_redis_client, close_redis
+from starlette.middleware.sessions import SessionMiddleware
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -31,6 +32,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# required for Authlib OAuth
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.JWT_SECRET_KEY,  # reuse your JWT secret
+    same_site="lax",
+    https_only=settings.COOKIE_SECURE
 )
 
 

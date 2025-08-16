@@ -13,6 +13,8 @@ from app.core.redis_lifecyle import get_redis_client
 from app.utils.Oauth.googleauth import oauth
 import uuid
 from app.utils.Oauth.googleauth import generate_nonce
+from app.core.cache import RedisCache
+from app.core.redis_lifecyle import get_cache
 
 router = APIRouter(prefix="/auth",tags=["Auth"])
 
@@ -103,16 +105,12 @@ async def redis_health_check(
     
 
 @router.get("/google/login")
-async def google_login(
-    request: Request
-):  # Store nonce in session for later validation
+async def google_login(request: Request,redis_client = Depends(get_redis_client) ):
     nonce = generate_nonce()
     request.session["nonce"] = nonce
-    print("Nonce generated and stored in session:", nonce)
-    redirect_uri = request.url_for('google_callback')
-    print("Redirect URI for Google OAuth:", redirect_uri)
-    # Redirect to Google's OAuth 2.0 server
-    return await oauth.google.authorize_redirect(request, redirect_uri,nonce=nonce)
+    await redis_client.setex(f"google_nonce:{nonce}", 600, "valid")
+    redirect_uri = request.url_for("google_callback")
+    return await oauth.google.authorize_redirect(request, redirect_uri, nonce=nonce)
 
 @router.get("/google/callback")
 async def google_callback(
@@ -120,10 +118,12 @@ async def google_callback(
         request: Request,
         db: AsyncSession = Depends(get_db),
         redis_client = Depends(get_redis_client),
+        cache = Depends(get_cache)
         
     ):
+   
 
-    user_data = await auth_service.handle_google_callback(request, db, redis_client)
+    user_data = await auth_service.handle_google_callback(request, db,cache, redis_client)
     #set access token
     response.set_cookie(
         key="access_token",

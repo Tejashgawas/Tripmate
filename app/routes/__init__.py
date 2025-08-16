@@ -8,7 +8,7 @@ from app.routes.recommendations import recommend
 from app.routes.services import service_provider
 
 from app.routes.expense import expense
-
+from app.routes.auth import password_reset as password_reset_router
 
 api_router = APIRouter()
 
@@ -16,6 +16,8 @@ api_router = APIRouter()
 # Auth routes
 api_router.include_router(auth.router)
 api_router.include_router(profile.router)
+api_router.include_router(password_reset_router.router)
+
 
 # Alias /users for /users/me endpoints
 from fastapi import APIRouter, Depends
