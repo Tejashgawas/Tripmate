@@ -75,8 +75,8 @@ async def create_trip_invite(
         await db.rollback()
         raise HTTPException(status_code=500, detail="Failed to create invite")
 
-    invite_link = generate_invite_link(Invite_code)
-    send_invite_email(invitee_email=invite_data.invitee_email, invite_link=invite_link, trip_name=trip.title)
+    # invite_link = generate_invite_link(Invite_code)
+    # send_invite_email(invitee_email=invite_data.invitee_email, invite_link=invite_link, trip_name=trip.title)
 
     return TripInviteResponse(
         id=new_invite.id,
