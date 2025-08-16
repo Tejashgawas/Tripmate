@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     #     "http://localhost:8080", 
     #     "http://127.0.0.1:8080"
     # ]
+
+    PASSWORD_MIN_LENGTH: int = 8
+    OTP_TTL_SECONDS: int = 300
+    RESET_TOKEN_TTL_SECONDS: int = 900
+    APP_NAME: str = "TripMate"
     
 
 

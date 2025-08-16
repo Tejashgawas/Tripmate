@@ -13,6 +13,9 @@ from app.core.redis_lifecyle import get_redis_client
 from app.utils.Oauth.googleauth import oauth
 from fastapi.responses import RedirectResponse
 from sqlalchemy import update
+from app.core.cache import RedisCache
+
+
 
 async def register_user(user_data:UserCreate,db:AsyncSession):
     result = await db.execute(select(User).where(User.email == user_data.email))
@@ -167,35 +170,38 @@ async def logout_user(
     return {"ok": True,"message":"logout successfull"}
 
 
-async def handle_google_callback(request, db: AsyncSession, redis_client):
-    nonce = request.session.get("nonce")
-
-    if not nonce:
-        raise HTTPException(status_code=400, detail="Nonce not found in session")
-    
+async def handle_google_callback(request, db: AsyncSession, cache: RedisCache, redis_client):
     token = await oauth.google.authorize_access_token(request)
+    print("Token response:", token)
+    nonce = request.session.get("nonce")
+    print(f"nonce inside handle:{nonce}")
 
     if not token:
         raise HTTPException(status_code=400, detail="Failed to retrieve access token from Google")
 
- 
+    # Parse ID token (contains user info + nonce)
+    claims = await oauth.google.parse_id_token(token, nonce=nonce)
+    print("Token response:", token.keys())
+    received_nonce = claims.get("nonce")
 
+    if not received_nonce:
+        raise HTTPException(status_code=400, detail="Nonce missing from token")
 
-    user_info = await oauth.google.parse_id_token(token=token,nonce=nonce)
+    # Validate nonce from Redis
+    stored_nonce = await redis_client.get(f"google_nonce:{received_nonce}")
+    if not stored_nonce:
+        raise HTTPException(status_code=400, detail="Invalid or expired nonce")
 
-    
+    # Once used, delete nonce to prevent replay attacks
+    await redis_client.delete(f"google_nonce:{received_nonce}")
 
-    if not user_info:
-        raise HTTPException(status_code=400, detail="Invalid Google user info")
-    
-    email = user_info.get("email")
-    username = user_info.get("name", email.split("@")[0])
-    
+    email = claims.get("email")
+    username = claims.get("name", email.split("@")[0])
+
     if not email:
         raise HTTPException(status_code=400, detail="Email not found in Google user info")
-    
-    result = await db.execute(select(User).where(User.email == email))
 
+    result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     is_new_user = False
 
@@ -203,8 +209,8 @@ async def handle_google_callback(request, db: AsyncSession, redis_client):
         user = User(
             email=email,
             username=username,
-            hashed_password=None,  # No password for OAuth users
-            role ="general",
+            hashed_password=None,
+            role="general",
             auth_type="google"
         )
         db.add(user)
@@ -212,23 +218,19 @@ async def handle_google_callback(request, db: AsyncSession, redis_client):
         await db.refresh(user)
         is_new_user = True
     else:
-        if user and  user.auth_type != "google":
-            request.session.pop("nonce", None)  
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User registered with different auth method")
-        
-    
-    
-    # Generate access token
+        if user.auth_type != "google":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="User registered with different auth method")
+
+    # Generate tokens
     access_token = create_access_token({"sub": str(user.id)})
     refresh_token_str = await refresh_token(user.id, redis_client)
-
 
     return {
         "access_token": access_token,
         "refresh_token": refresh_token_str,
         "user": user,
         "is_new_user": is_new_user
-
     }
 
 
