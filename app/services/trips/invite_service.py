@@ -141,8 +141,9 @@ async def get_user_trip_invites(
 ) -> list[TripInviteResponse]:
     result = await db.execute(
         select(TripInvite)
-        .options(joinedload(TripInvite.trip))
-        .join(Trip, TripInvite.trip_id == Trip.id)
+        .options(joinedload(TripInvite.trip),
+                 joinedload(TripInvite.inviter)
+                 )
         .where(TripInvite.invitee_email == current_user.email)
     )
 
@@ -155,11 +156,41 @@ async def get_user_trip_invites(
             invitee_email=invite.invitee_email,
             status=invite.status,
             invite_code=invite.invite_code,
-            trip_code=invite.trip.trip_code if invite.trip else None
+            trip_code=invite.trip.trip_code if invite.trip else None,
+            trip_title=invite.trip.title if invite.trip else None,
+            inviter_username=invite.inviter.username if invite.inviter else None
         )
         for invite in invites
     ]
 
+async def get_user_sent_invites(
+    db: AsyncSession,
+    current_user: User
+) -> list[TripInviteResponse]:
+    result = await db.execute(
+        select(TripInvite)
+        .options(joinedload(TripInvite.trip),
+                 joinedload(TripInvite.inviter)
+                 )
+        .join(Trip, TripInvite.trip_id == Trip.id)
+        .where(TripInvite.inviter_id == current_user.id)  # <- change here
+    )
+
+    invites = result.scalars().all()
+    return [
+        TripInviteResponse(
+            id=invite.id,
+            trip_id=invite.trip_id,
+            inviter_id=invite.inviter_id,
+            invitee_email=invite.invitee_email,
+            status=invite.status,
+            invite_code=invite.invite_code,
+            trip_code=invite.trip.trip_code if invite.trip else None,
+            trip_title=invite.trip.title if invite.trip else None,
+            inviter_username=invite.inviter.username if invite.inviter else None
+        )
+        for invite in invites
+    ]
 
 async def decline_trip_invite(
     db: AsyncSession,
