@@ -44,7 +44,7 @@ async def login(
 async def refresh_token_route(request: Request, response: Response,redis_client = Depends(get_redis_client)):
     # Read refresh token from HTTP-only cookie
     refresh_token = request.cookies.get(settings.REFRESH_COOKIE_NAME)
-    print(refresh_token)
+    # print(refresh_token)
     
     if not refresh_token:
         raise HTTPException(
