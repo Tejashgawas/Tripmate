@@ -82,7 +82,7 @@ class ItineraryService:
 
         # Convert to response model
         return ItineraryResponse.model_validate(itinerary.to_dict())
-
+    
     async def get_itineraries_by_trip(
         self,
         db: AsyncSession,
@@ -99,24 +99,22 @@ class ItineraryService:
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=403, detail="Access denied to this trip")
 
-        # Try to get from cache
+        # --- Versioned cache integration ---
+        version = await self.cache.get(f"itineraries_version:{trip_id}") or 1
         cache_key = self.cache.build_key("itineraries", "trip", trip_id)
-        cached_itineraries = await self.cache.get(cache_key)
-        
+        cached_itineraries = await self.cache.get(cache_key, version=version)
+
         if cached_itineraries:
             logger.info(f"Retrieved itineraries for trip {trip_id} from cache")
-
-
-            # Process each itinerary
-            result = []
+            # ... existing processing of cached_itineraries ...
+            result_list = []
             for itin in cached_itineraries:
-                # Convert dates from strings to proper date/datetime objects
+                # convert dates & activities as before
                 if isinstance(itin.get('date'), str):
                     itin['date'] = datetime.strptime(itin['date'], "%Y-%m-%d").date()
                 if isinstance(itin.get('created_at'), str):
                     itin['created_at'] = datetime.fromisoformat(itin['created_at'])
 
-                # Convert activities to ActivityResponse models
                 activities = []
                 for activity in itin.get('activities', []):
                     if isinstance(activity, dict):
@@ -127,14 +125,11 @@ class ItineraryService:
                             except ValueError:
                                 pass
                         activities.append(ActivityResponse.model_validate(activity_data))
-
-                # Prepare itinerary data with processed activities
                 itin_data = {**itin, 'activities': activities}
-                result.append(ItineraryResponse.model_validate(itin_data))
+                result_list.append(ItineraryResponse.model_validate(itin_data))
+            return result_list
 
-            return result
-
-        # Get from database
+        # --- Database fetch as before ---
         result = await db.execute(
             select(Itinerary)
             .options(selectinload(Itinerary.activities))
@@ -143,36 +138,37 @@ class ItineraryService:
         )
         itineraries = [itin.to_dict() for itin in result.scalars().all()]
 
-        # Convert each itinerary to a response model
         response_models = []
         for itin in itineraries:
-        # Convert activities to ActivityResponse models
             activities = []
             for activity in itin.get('activities', []):
                 if isinstance(activity, dict):
                     activity_data = {**activity}
                     if isinstance(activity_data.get('time'), str):
                         try:
-                            activity_data['time'] = datetime.strptime(activity_data['time'], "%H:%M:%S").time()     
+                            activity_data['time'] = datetime.strptime(activity_data['time'], "%H:%M:%S").time()
                         except ValueError:
                             pass
-                    activities.append(ActivityResponse.model_validate(activity_data))            # Prepare itinerary data with processed activities
+                    activities.append(ActivityResponse.model_validate(activity_data))
             itin_data = {**itin, 'activities': activities}
             if isinstance(itin_data.get('date'), str):
                 itin_data['date'] = datetime.strptime(itin_data['date'], "%Y-%m-%d").date()
             if isinstance(itin_data.get('created_at'), str):
                 itin_data['created_at'] = datetime.fromisoformat(itin_data['created_at'])
-                
             response_models.append(ItineraryResponse.model_validate(itin_data))
 
-        # Cache the results for 15 minutes
+        # --- Cache result using versioned key ---
         await self.cache.set(
             cache_key,
             [itin.model_dump() for itin in response_models],
-            expire=900
+            expire=900,
+            version=version
         )
 
         return response_models
+
+
+   
 
     async def update_itinerary(
         self,
@@ -204,7 +200,7 @@ class ItineraryService:
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=403, detail="Not authorized to update this itinerary")
 
-        # Update itinerary
+         # Update itinerary fields
         update_data = itinerary_update.model_dump(exclude_unset=True)
         if update_data.get('date') and isinstance(update_data['date'], str):
             update_data['date'] = datetime.strptime(update_data['date'], "%Y-%m-%d").date()
@@ -215,13 +211,19 @@ class ItineraryService:
         await db.commit()
         await db.refresh(itinerary)
 
-        # Invalidate caches
-        await self.cache.delete_pattern(f"itineraries:trip:{itinerary.trip_id}:*")
-        await self.cache.delete_pattern(f"itinerary:{itinerary_id}")
+        trip_id = itinerary.trip_id
 
-        # Convert to response model
+        # --- Version bump for cache ---
+        current_version = await self.cache.get(f"itineraries_version:{trip_id}") or 1
+        new_version = current_version + 1
+        await self.cache.set(f"itineraries_version:{trip_id}", new_version, expire=86400)
+
+        # --- Save updated itinerary in cache with new version ---
+        cache_key = self.cache.build_key("itineraries", "trip", trip_id)
+        await self.cache.set(cache_key, [itinerary.to_dict()], version=new_version, expire=900)
+
         return ItineraryResponse.model_validate(itinerary.to_dict())
-
+    
     async def delete_itinerary(
         self,
         db: AsyncSession,
@@ -253,13 +255,16 @@ class ItineraryService:
         # Delete activities
         for activity in itinerary.activities:
             await db.delete(activity)
-
         await db.delete(itinerary)
         await db.commit()
 
-        # Invalidate caches
-        await self.cache.delete_pattern(f"itineraries:trip:{trip_id}:*")
-        await self.cache.delete_pattern(f"itinerary:{itinerary_id}")
+        # --- Version bump for cache ---
+        current_version = await self.cache.get(f"itineraries_version:{trip_id}") or 1
+        new_version = current_version + 1
+        await self.cache.set(f"itineraries_version:{trip_id}", new_version, expire=86400)
 
-        # Convert to response model before returning
+        # --- Mark deleted in cache for instant effect ---
+        cache_key = self.cache.build_key("itineraries", "trip", trip_id)
+        await self.cache.set(cache_key, None, version=new_version, expire=900)
+
         return ItineraryResponse.model_validate(itinerary.to_dict())
