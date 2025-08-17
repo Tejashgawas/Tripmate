@@ -27,10 +27,15 @@ class RedisCache:
         await self.redis.delete(key)
 
     async def delete_pattern(self, pattern: str) -> None:
-        """Delete all keys matching pattern"""
-        keys = await self.redis.keys(pattern)
-        if keys:
-            await self.redis.delete(*keys)
+        """Delete all keys matching pattern safely and efficiently"""
+        cursor = b"0"
+        while cursor:
+            cursor, keys = await self.redis.scan(cursor=cursor, match=pattern, count=100)
+            if keys:
+                # Delete in batches to avoid large command overhead
+                await self.redis.delete(*keys)
+            if cursor == b'0':
+                break
 
     @staticmethod
     def build_key(*args) -> str:
