@@ -103,23 +103,21 @@ async def delete_expense_by_id(
     current_user: User = Depends(get_current_user)
 ):
     """Delete an expense."""
-    try:
-        expense = await get_expense(session, expense_id)
-        if not expense:
-            raise HTTPException(status_code=404, detail="Expense not found")
-        
-        # Only the person who paid or trip creator can delete
-        if expense.paid_by != current_user.id:
-            # TODO: Add trip creator check
-            raise HTTPException(status_code=403, detail="Only the payer can delete this expense")
-        
-        success = await delete_expense(session, expense_id)
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to delete expense")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete expense: {str(e)}")
+    # 1. Fetch the expense ONCE
+    expense = await get_expense(session, expense_id)
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    # 2. Check permissions
+    if expense.paid_by != current_user.id:
+        # TODO: Add trip creator check
+        raise HTTPException(status_code=403, detail="Only the payer can delete this expense")
+
+    # 3. Pass the fetched OBJECT to the service function
+    success = await delete_expense(session, expense)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete expense")
 
 # Split Management
 @router.post("/{expense_id}/splits", response_model=List[ExpenseSplitResponse])
