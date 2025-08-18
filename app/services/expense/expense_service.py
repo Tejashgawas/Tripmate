@@ -190,30 +190,27 @@ async def delete_expense(
 # ----------------------
 # Split Management
 # ----------------------
+from sqlalchemy.orm import selectinload
+from sqlalchemy import select
+
 async def update_expense_splits(
     session: AsyncSession,
-    expense_id: int,
+    expense: Expense,
     splits: List[ExpenseSplitCreate]
 ) -> List[ExpenseSplit]:
     """Update expense splits manually."""
-    expense = await get_expense(session, expense_id)
-    if not expense:
-        raise HTTPException(status_code=404, detail="Expense not found")
-
     total_split = sum((s.amount for s in splits), Decimal('0.00'))
     if total_split != expense.amount:
         raise HTTPException(
             status_code=400,
             detail=f"Split amounts must equal expense amount. Expected: {expense.amount}, Got: {total_split}"
         )
-    
 
-    # Delete existing splits (fetch them first)
+    # Delete existing splits
     existing_splits_res = await session.execute(
-        select(ExpenseSplit).where(ExpenseSplit.expense_id == expense_id)
+        select(ExpenseSplit).where(ExpenseSplit.expense_id == expense.id)
     )
-    existing_splits = existing_splits_res.scalars().all()
-    for split in existing_splits:
+    for split in existing_splits_res.scalars().all():
         session.delete(split)
 
     await session.flush()
@@ -222,7 +219,7 @@ async def update_expense_splits(
     new_splits = []
     for split_data in splits:
         split = ExpenseSplit(
-            expense_id=expense_id,
+            expense_id=expense.id,
             user_id=split_data.user_id,
             amount=split_data.amount,
             notes=split_data.notes,
@@ -232,13 +229,10 @@ async def update_expense_splits(
         new_splits.append(split)
 
     expense.is_split_equally = False
-    await session.commit()
 
-    # Return fresh splits loaded from DB
-    new_res = await session.execute(
-        select(ExpenseSplit).where(ExpenseSplit.expense_id == expense_id).options(selectinload(ExpenseSplit.user))
-    )
-    return new_res.scalars().all()
+    # --- FIX ---
+    # Return the list of newly created split objects.
+    return new_splits
 
 
 async def mark_split_paid(
