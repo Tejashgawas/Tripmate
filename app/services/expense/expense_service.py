@@ -1,6 +1,6 @@
 # refactored expense_service.py
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_,delete
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 from typing import List, Optional, Dict
@@ -207,13 +207,10 @@ async def update_expense_splits(
         )
 
     # Delete existing splits
-    existing_splits_res = await session.execute(
-        select(ExpenseSplit).where(ExpenseSplit.expense_id == expense.id)
+    await session.execute(
+        delete(ExpenseSplit).where(ExpenseSplit.expense_id == expense.id)
     )
-    for split in existing_splits_res.scalars().all():
-        session.delete(split)
-
-    await session.flush()
+    
 
     # Create new splits
     new_splits = []
@@ -229,6 +226,7 @@ async def update_expense_splits(
         new_splits.append(split)
 
     expense.is_split_equally = False
+    await session.flush()
 
     # --- FIX ---
     # Return the list of newly created split objects.
