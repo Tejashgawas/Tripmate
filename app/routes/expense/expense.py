@@ -277,21 +277,21 @@ async def export_expense_report_route(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to export expense report: {str(e)}")
 
-# Bulk Operations
-@router.post("/trips/{trip_id}/bulk-status", response_model=dict)
-async def bulk_update_expense_status(
-    trip_id: int = Path(..., gt=0),
-    bulk_update: BulkExpenseStatusUpdate = ...,
-    session: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Bulk update expense statuses."""
-    try:
-        # TODO: Implement bulk status update
-        # This would require additional service functions
-        return {"message": "Bulk status update not yet implemented"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to bulk update expenses: {str(e)}")
+# # Bulk Operations
+# @router.post("/trips/{trip_id}/bulk-status", response_model=dict)
+# async def bulk_update_expense_status(
+#     trip_id: int = Path(..., gt=0),
+#     bulk_update: BulkExpenseStatusUpdate = ...,
+#     session: AsyncSession = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     """Bulk update expense statuses."""
+#     try:
+#         # TODO: Implement bulk status update
+#         # This would require additional service functions
+#         return {"message": "Bulk status update not yet implemented"}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Failed to bulk update expenses: {str(e)}")
 
 # Additional utility endpoints
 @router.get("/categories", response_model=List[str])
