@@ -204,6 +204,7 @@ async def update_expense_splits(
             status_code=400,
             detail=f"Split amounts must equal expense amount. Expected: {expense.amount}, Got: {total_split}"
         )
+    
 
     # Delete existing splits (fetch them first)
     existing_splits_res = await session.execute(
@@ -212,6 +213,8 @@ async def update_expense_splits(
     existing_splits = existing_splits_res.scalars().all()
     for split in existing_splits:
         session.delete(split)
+
+    await session.flush()
 
     # Create new splits
     new_splits = []
