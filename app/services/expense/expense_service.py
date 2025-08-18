@@ -173,17 +173,19 @@ async def update_expense(
 
 async def delete_expense(
     session: AsyncSession,
-    expense_id: int
+    expense_to_delete: Expense  # Accept the object itself
 ) -> bool:
-    """Delete an expense."""
-    expense = await get_expense(session, expense_id)
-    if not expense:
+    """Delete an expense object."""
+    try:
+        # No need to fetch or check for existence here,
+        # as that's already done in the route handler.
+        await session.delete(expense_to_delete)
+        await session.commit()
+        return True
+    except Exception:
+        # It's good practice to rollback on failure
+        await session.rollback()
         return False
-
-    session.delete(expense)
-    await session.commit()
-    return True
-
 
 # ----------------------
 # Split Management
