@@ -46,6 +46,9 @@ class TripChecklist(Base):
         Index("ix_trip_checklist_priority", "priority"),
         Index("ix_trip_checklist_due_date", "due_date"),
     )
+    @property
+    def creator_name(self):
+        return self.creator.username if self.creator else None
 
 class ChecklistAssignment(Base):
     __tablename__ = "checklist_assignments"
@@ -67,6 +70,13 @@ class ChecklistAssignment(Base):
         Index("ix_checklist_assignments_task_id", "task_id"),
         Index("ix_checklist_assignments_assigned_to", "assigned_to"),
     )
+    @property
+    def assigned_user_name(self):
+        return self.assigned_user.username if self.assigned_user else None
+
+    @property
+    def assigner_name(self):
+        return self.assigner.username if self.assigner else None
 
 class ChecklistCompletion(Base):
     __tablename__ = "checklist_completions"
@@ -86,3 +96,7 @@ class ChecklistCompletion(Base):
         Index("ix_checklist_completions_task_id", "task_id"),
         Index("ix_checklist_completions_completed_by", "completed_by"),
     )
+
+    @property
+    def user_name(self):
+        return self.user.username if self.user else None
