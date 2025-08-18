@@ -214,6 +214,9 @@ async def mark_task_complete(
         
         if completed_count + 1 >= len(assignments):
             task.is_completed = True
+    else:
+        task.is_completed = True
+
     
     await session.commit()
     await session.refresh(completion)
