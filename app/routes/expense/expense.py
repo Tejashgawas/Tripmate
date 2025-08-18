@@ -120,7 +120,7 @@ async def delete_expense_by_id(
         raise HTTPException(status_code=500, detail="Failed to delete expense")
 
 # Split Management
-@router.post("/{expense_id}/splits", response_model=List[ExpenseSplitResponse])
+@router.put("/{expense_id}/splits", response_model=List[ExpenseSplitResponse])
 async def update_expense_splits_route(
     expense_id: int = Path(..., gt=0),
     splits: List[ExpenseSplitCreate] = ...,
@@ -128,21 +128,21 @@ async def update_expense_splits_route(
     current_user: User = Depends(get_current_user)
 ):
     """Update expense splits manually."""
-    try:
-        expense = await get_expense(session, expense_id)
-        if not expense:
-            raise HTTPException(status_code=404, detail="Expense not found")
-        
-        # Only the person who paid can update splits
-        if expense.paid_by != current_user.id:
-            raise HTTPException(status_code=403, detail="Only the payer can update expense splits")
-        
-        updated_splits = await update_expense_splits(session, expense_id, splits)
-        return updated_splits
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update expense splits: {str(e)}")
+    # 1. Fetch the expense ONCE
+    expense = await get_expense(session, expense_id)
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    
+    # 2. Check permissions
+    if expense.paid_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the payer can update expense splits")
+    
+    # 3. Pass the fetched OBJECT to the service function
+    updated_splits = await update_expense_splits(session, expense, splits)
+
+    # 4. Return the result from the service function
+    # This will now correctly return the list of new splits.
+    return updated_splits
 
 @router.post("/{expense_id}/splits/{user_id}/pay", response_model=dict)
 async def mark_split_as_paid(
