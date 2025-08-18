@@ -20,6 +20,12 @@ from app.services.expense.expense_service import (
     calculate_settlements_needed, create_settlement, confirm_settlement,
     get_trip_expense_summary, export_expense_report
 )
+from sqlalchemy.orm import selectinload
+from sqlalchemy import select
+from app.models.expense.expense_models import (
+    Expense, ExpenseMember, ExpenseSplit, ExpenseSettlement,
+    ExpenseCategory, ExpenseStatus
+)
 
 router = APIRouter(prefix="/expenses", tags=["Expense Management"])
 
@@ -140,9 +146,14 @@ async def update_expense_splits_route(
     # 3. Pass the fetched OBJECT to the service function
     updated_splits = await update_expense_splits(session, expense, splits)
 
-    # 4. Return the result from the service function
-    # This will now correctly return the list of new splits.
-    return updated_splits
+    final_splits_res = await session.execute(
+        select(ExpenseSplit)
+        .where(ExpenseSplit.expense_id == expense_id)
+        .options(selectinload(ExpenseSplit.user))
+    )
+    
+    # 5. Return the fully loaded objects for the response
+    return final_splits_res.scalars().all()
 
 @router.post("/{expense_id}/splits/{user_id}/pay", response_model=dict)
 async def mark_split_as_paid(
