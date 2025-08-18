@@ -227,6 +227,7 @@ async def update_expense_splits(
 
     expense.is_split_equally = False
     await session.flush()
+    await session.commit()
 
     # --- FIX ---
     # Return the list of newly created split objects.
