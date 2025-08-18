@@ -54,6 +54,9 @@ class Expense(Base):
         Index("ix_expenses_expense_date", "expense_date"),
         Index("ix_expenses_paid_by", "paid_by"),
     )
+    @property
+    def payer_name(self):
+        return self.payer.username if self.payer else None
 
 class ExpenseMember(Base):
     __tablename__ = "expense_members"
@@ -73,6 +76,9 @@ class ExpenseMember(Base):
         Index("ix_expense_members_expense_id", "expense_id"),
         Index("ix_expense_members_user_id", "user_id"),
     )
+    @property
+    def user_name(self):
+        return self.user.username if self.user else None
 
 class ExpenseSplit(Base):
     __tablename__ = "expense_splits"
@@ -95,6 +101,9 @@ class ExpenseSplit(Base):
         Index("ix_expense_splits_user_id", "user_id"),
         Index("ix_expense_splits_is_paid", "is_paid"),
     )
+    @property
+    def user_name(self):
+        return self.user.username if self.user else None
 
 class ExpenseSettlement(Base):
     __tablename__ = "expense_settlements"
@@ -124,3 +133,11 @@ class ExpenseSettlement(Base):
         Index("ix_expense_settlements_to_user", "to_user_id"),
         Index("ix_expense_settlements_settlement_date", "settlement_date"),
     )
+
+    @property
+    def from_user_name(self):
+        return self.from_user.username if self.from_user else None
+
+    @property
+    def to_user_name(self):
+        return self.to_user.username if self.to_user else None
