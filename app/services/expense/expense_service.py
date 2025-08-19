@@ -254,6 +254,31 @@ async def mark_split_paid(
 
     split.is_paid = True
     split.paid_at = datetime.utcnow()
+
+    # Check if all splits for this expense are now paid
+    total_splits_res = await session.execute(
+        select(func.count(ExpenseSplit.id)).where(ExpenseSplit.expense_id == expense_id)
+    )
+    total_splits_count = total_splits_res.scalar_one()
+
+    paid_splits_res = await session.execute(
+        select(func.count(ExpenseSplit.id)).where(
+            ExpenseSplit.expense_id == expense_id,
+            ExpenseSplit.is_paid == True
+        )
+    )
+    paid_splits_count = paid_splits_res.scalar_one()
+
+    # If all splits are paid, update the parent expense status to 'approved'
+    if total_splits_count > 0 and total_splits_count == paid_splits_count:
+        expense_res = await session.execute(select(Expense).where(Expense.id == expense_id))
+        parent_expense = expense_res.scalar_one_or_none()
+        if parent_expense:
+            # --- CHANGE IS HERE ---
+            parent_expense.status = ExpenseStatus.approved
+
+
+
     await session.commit()
     return True
 
@@ -265,50 +290,74 @@ async def calculate_user_balances(
     session: AsyncSession,
     trip_id: int
 ) -> List[UserBalance]:
-    """Calculate running balances for all users in a trip."""
-    # Get all trip members (with user relation)
-    tm_res = await session.execute(select(TripMember).where(TripMember.trip_id == trip_id).options(selectinload(TripMember.user)))
+    """Calculate running balances for all users in a trip, 
+    considering owed, already paid, and remaining balances."""
+
+    # Get all trip members with user details
+    tm_res = await session.execute(
+        select(TripMember).where(TripMember.trip_id == trip_id).options(selectinload(TripMember.user))
+    )
     trip_members = tm_res.scalars().all()
 
     balances = []
+
     for member in trip_members:
-        # Calculate total paid by this user
+        user_id = member.user_id
+
+        # 1. Total paid by this user (as creator of expenses)
         paid_result = await session.execute(
             select(func.sum(Expense.amount)).where(
                 and_(
                     Expense.trip_id == trip_id,
-                    Expense.paid_by == member.user_id,
-                    Expense.status.in_([ExpenseStatus.approved, ExpenseStatus.settled])
+                    Expense.paid_by == user_id
                 )
             )
         )
         total_paid = paid_result.scalar() or Decimal('0.00')
 
-        # Calculate total owed by this user
+        # 2. Total owed by this user (all splits assigned)
         owed_result = await session.execute(
             select(func.sum(ExpenseSplit.amount)).join(Expense).where(
                 and_(
                     Expense.trip_id == trip_id,
-                    ExpenseSplit.user_id == member.user_id,
-                    Expense.status.in_([ExpenseStatus.approved, ExpenseStatus.settled])
+                    ExpenseSplit.user_id == user_id
                 )
             )
         )
         total_owed = owed_result.scalar() or Decimal('0.00')
 
-        net_balance = total_paid - total_owed
+        # 3. Already paid from owed (splits marked is_paid=True)
+        already_paid_result = await session.execute(
+            select(func.sum(ExpenseSplit.amount)).join(Expense).where(
+                and_(
+                    Expense.trip_id == trip_id,
+                    ExpenseSplit.user_id == user_id,
+                    ExpenseSplit.is_paid == True
+                )
+            )
+        )
+        already_paid_owed = already_paid_result.scalar() or Decimal('0.00')
+
+        # 4. Remaining owed
+        remaining_owed = total_owed - already_paid_owed
+
+        # 5. Net balance (what this user is effectively at after considering splits)
+        net_balance = total_paid - remaining_owed
 
         balance = UserBalance(
-            user_id=member.user_id,
+            user_id=user_id,
             user_name=member.user.username if member.user else None,
             user_email=member.user.email if member.user else None,
             total_paid=total_paid,
             total_owed=total_owed,
+            already_paid_owed=already_paid_owed,
+            remaining_owed=remaining_owed,
             net_balance=net_balance
         )
         balances.append(balance)
 
     return balances
+
 
 
 async def calculate_settlements_needed(
