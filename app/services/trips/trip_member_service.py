@@ -4,7 +4,7 @@ from fastapi import HTTPException,status
 from datetime import datetime
 from sqlalchemy.orm import selectinload
 from app.models.trips.trip_member import TripMember
-from app.schemas.trip.trip_member import TripMemberCreate,TripMemberResponse,TripMemberOut
+from app.schemas.trip.trip_member import TripMemberCreate,TripMemberResponse,TripMemberOut,UserTrip,UserTripsResponse,GetTrip,CreatorInfo
 from app.models.user.user import User
 from app.models.trips.trip_model import Trip
 from sqlalchemy.orm import selectinload
@@ -71,3 +71,48 @@ async def remove_member(db: AsyncSession, member_id: int,current_user:User):
 
     await db.delete(member)
     await db.commit()
+
+
+async def get_user_trips_with_membership(db: AsyncSession, user_id: int):
+    result = await db.execute(
+        select(
+            Trip,
+            TripMember.role,
+            TripMember.joined_at,
+            User.id.label("creator_id"),
+            User.username.label("creator_username")
+        )
+        .select_from(TripMember)
+        .join(Trip, Trip.id == TripMember.trip_id)
+        .join(User, User.id == Trip.creator_id)
+        .where(TripMember.user_id == user_id)
+    )
+
+    rows = result.all()
+    if not rows:
+        raise HTTPException(status_code=404, detail="No trips found for this user")
+
+    return UserTripsResponse(
+        trips=[
+            UserTrip(
+                trip=GetTrip(
+                    id=row.Trip.id,
+                    title=row.Trip.title,
+                    start_date=row.Trip.start_date,
+                    end_date=row.Trip.end_date,
+                    location=row.Trip.location,
+                    budget=row.Trip.budget,
+                    trip_type=row.Trip.trip_type,
+                    trip_code=row.Trip.trip_code,
+                    created_at=row.Trip.created_at,
+                    creator=CreatorInfo(
+                        id=row.creator_id,
+                        username=row.creator_username
+                    )
+                ),
+                role=row.role,
+                joined_at=row.joined_at
+            )
+            for row in rows
+        ]
+    )
