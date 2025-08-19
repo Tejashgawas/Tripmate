@@ -167,7 +167,7 @@ class SettlementSummary(BaseModel):
     to_user_name: Optional[str] = None
     amount: Decimal
     currency: str
-
+    
 class TripExpenseSummary(BaseModel):
     trip_id: int
     total_expenses: Decimal
@@ -190,8 +190,8 @@ class BulkExpenseStatusUpdate(BaseModel):
 
 # Export schemas
 class ExpenseExportRequest(BaseModel):
-    trip_id: int
-    format: str = Field(default="csv", pattern="^(csv|json|pdf)$")
+   
+    format: str = Field(default="json", pattern="^(csv|json|pdf)$")
     include_settlements: bool = True
     include_balances: bool = True
     date_from: Optional[datetime] = None
