@@ -142,13 +142,23 @@ class ExpenseSummary(BaseModel):
         from_attributes = True
 
 # Balance and settlement schemas
+# class UserBalance(BaseModel):
+#     user_id: int
+#     user_name: Optional[str] = None
+#     user_email: Optional[str] = None
+#     total_paid: Decimal
+#     total_owed: Decimal
+#     net_balance: Decimal  # Positive means they are owed money, negative means they owe money
 class UserBalance(BaseModel):
     user_id: int
-    user_name: Optional[str] = None
-    user_email: Optional[str] = None
+    user_name: Optional[str]=None
+    user_email: Optional[str]=None
     total_paid: Decimal
     total_owed: Decimal
-    net_balance: Decimal  # Positive means they are owed money, negative means they owe money
+    already_paid_owed: Decimal
+    remaining_owed: Decimal
+    net_balance: Decimal
+
 
 class SettlementSummary(BaseModel):
     from_user_id: int
