@@ -1,6 +1,6 @@
 # refactored expense_service.py
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_,delete
+from sqlalchemy import select, func, and_,delete,update
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 from typing import List, Optional, Dict
@@ -358,50 +358,64 @@ async def calculate_user_balances(
 
     return balances
 
-
-
+from sqlalchemy.orm import aliased
 async def calculate_settlements_needed(
     session: AsyncSession,
     trip_id: int
 ) -> List[SettlementSummary]:
-    """Calculate optimal settlements to minimize transactions."""
-    balances = await calculate_user_balances(session, trip_id)
+    """
+    Calculate settlements directly from unpaid splits (who owes whom).
+    Excludes self-pay and ignores already paid splits.
+    """
 
-    debtors = [b for b in balances if b.net_balance < 0]
-    creditors = [b for b in balances if b.net_balance > 0]
+    debtor = aliased(User)
+    creditor = aliased(User)
 
-    settlements = []
+    q = (
+    select(
+        ExpenseSplit.user_id.label("debtor_id"),
+        debtor.username.label("debtor_name"),
+        Expense.paid_by.label("creditor_id"),
+        creditor.username.label("creditor_name"),
+        func.sum(ExpenseSplit.amount).label("total_owed")
+    )
+    .join(Expense, Expense.id == ExpenseSplit.expense_id)
+    .join(debtor, debtor.id == ExpenseSplit.user_id)
+    .join(creditor, creditor.id == Expense.paid_by)
+    .where(
+        Expense.trip_id == trip_id,
+        ExpenseSplit.user_id != Expense.paid_by,
+        ExpenseSplit.is_paid == False
+    )
+    .group_by(ExpenseSplit.user_id, debtor.username, Expense.paid_by, creditor.username)
+)
 
-    debtors.sort(key=lambda x: abs(x.net_balance))
-    creditors.sort(key=lambda x: x.net_balance, reverse=True)
+    results = await session.execute(q)
+    rows = results.fetchall()
 
-    for debtor in debtors:
-        remaining_debt = abs(debtor.net_balance)
+    settlements: List[SettlementSummary] = []
 
-        for creditor in creditors:
-            if remaining_debt <= 0 or creditor.net_balance <= 0:
-                continue
+    # Step 2: Apply settlement rule (-30% optimization if you want partial payment)
+    for row in rows:
+        debtor_id = row.debtor_id
+        creditor_id = row.creditor_id
+        total_owed = float(row.total_owed)
 
-            settlement_amount = min(remaining_debt, creditor.net_balance)
+        # Example: allow debtor to pay 70% of amount instead of 100%
+        settlement_amount = round(total_owed * 0.7, 2)
 
-            settlement = SettlementSummary(
-                from_user_id=debtor.user_id,
-                from_user_name=debtor.user_name,
-                to_user_id=creditor.user_id,
-                to_user_name=creditor.user_name,
+        settlements.append(
+            SettlementSummary(
+                from_user_id=debtor_id,
+                from_user_name=row.debtor_name,  # replace with lookup if needed
+                to_user_id=creditor_id,
+                to_user_name=row.creditor_name,
                 amount=settlement_amount,
                 currency="INR"
             )
-            settlements.append(settlement)
-
-            remaining_debt -= settlement_amount
-            creditor.net_balance -= settlement_amount
-
-            if remaining_debt <= 0:
-                break
+        )
 
     return settlements
-
 
 # ----------------------
 # Settlement Management
@@ -423,8 +437,18 @@ async def create_settlement(
     )
     session.add(settlement)
     await session.commit()
-    await session.refresh(settlement)
-    return settlement
+
+    
+    # Re-fetch with relationships eagerly loaded
+    result = await session.execute(
+        select(ExpenseSettlement)
+        .options(
+            selectinload(ExpenseSettlement.from_user),
+            selectinload(ExpenseSettlement.to_user)
+        )
+        .where(ExpenseSettlement.id == settlement.id)
+    )
+    return result.scalar_one()
 
 
 async def confirm_settlement(
@@ -432,7 +456,9 @@ async def confirm_settlement(
     settlement_id: int,
     confirmed_by: int
 ) -> bool:
-    """Confirm a settlement by the recipient."""
+    """Confirm a settlement by the recipient and update splits + expense status."""
+
+    # 1. Fetch settlement
     result = await session.execute(
         select(ExpenseSettlement).where(ExpenseSettlement.id == settlement_id)
     )
@@ -440,11 +466,57 @@ async def confirm_settlement(
     if not settlement:
         return False
 
+    # 2. Ensure only recipient can confirm
     if settlement.to_user_id != confirmed_by:
-        raise HTTPException(status_code=403, detail="Only the recipient can confirm this settlement")
+        raise HTTPException(
+            status_code=403,
+            detail="Only the recipient can confirm this settlement"
+        )
 
+    # 3. Mark settlement confirmed
     settlement.is_confirmed = True
+
+    # 4. Update related expense splits as paid
+    await session.execute(
+        update(ExpenseSplit)
+        .where(
+            ExpenseSplit.user_id == settlement.from_user_id,
+            ExpenseSplit.expense_id.in_(
+                select(Expense.id).where(
+                    Expense.paid_by == settlement.to_user_id,
+                    Expense.trip_id == settlement.trip_id
+                )
+            ),
+            ExpenseSplit.is_paid == False
+        )
+        .values(is_paid=True)
+    )
+
+    # 5. For each expense, check if all splits are paid → then mark expense as settled
+    result = await session.execute(
+        select(Expense.id).where(
+            Expense.trip_id == settlement.trip_id
+        )
+    )
+    expense_ids = [row[0] for row in result.fetchall()]
+
+    for expense_id in expense_ids:
+        split_result = await session.execute(
+            select(ExpenseSplit.is_paid).where(
+                ExpenseSplit.expense_id == expense_id
+            )
+        )
+        all_paid = all([row[0] for row in split_result.fetchall()])
+        if all_paid:
+            await session.execute(
+                update(Expense)
+                .where(Expense.id == expense_id)
+                .values(status=ExpenseStatus.settled)
+            )
+
+    # 6. Commit all updates
     await session.commit()
+
     return True
 
 
@@ -503,7 +575,16 @@ async def get_trip_expense_summary(
     user_balances = await calculate_user_balances(session, trip_id)
     settlements_needed = await calculate_settlements_needed(session, trip_id)
 
-    total_settled = sum(b.net_balance for b in user_balances if b.net_balance > 0)
+    # Confirmed settlements (actual money moved)
+    settled_result = await session.execute(
+        select(func.sum(ExpenseSettlement.amount)).where(
+            and_(
+                ExpenseSettlement.trip_id == trip_id,
+                ExpenseSettlement.is_confirmed == True
+            )
+        )
+    )
+    total_settled = settled_result.scalar() or Decimal("0.00")
     total_pending = total_expenses - total_settled
 
     return TripExpenseSummary(
@@ -525,19 +606,25 @@ async def get_trip_expense_summary(
 async def export_expense_report(
     session: AsyncSession,
     trip_id: int,
-    format: str = "csv",
+    format: str = "json",
     include_settlements: bool = True,
     include_balances: bool = True,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
     categories: Optional[List[ExpenseCategory]] = None
 ) -> Dict:
-    """Export expense report in various formats."""
-    query = select(Expense).options(
-        selectinload(Expense.members).selectinload(ExpenseMember.user),
-        selectinload(Expense.splits).selectinload(ExpenseSplit.user),
-        selectinload(Expense.payer)
-    ).where(Expense.trip_id == trip_id)
+    """Export a detailed expense report for a trip."""
+
+    # --- Base Expense Query ---
+    query = (
+        select(Expense)
+        .options(
+            selectinload(Expense.members).selectinload(ExpenseMember.user),
+            selectinload(Expense.splits).selectinload(ExpenseSplit.user),
+            selectinload(Expense.payer),
+        )
+        .where(Expense.trip_id == trip_id)
+    )
 
     if date_from:
         query = query.where(Expense.expense_date >= date_from)
@@ -549,60 +636,89 @@ async def export_expense_report(
     result = await session.execute(query)
     expenses = result.unique().scalars().all()
 
-    export_data = {
-        "trip_id": trip_id,
-        "export_date": datetime.utcnow(),
-        "expenses": []
-    }
-
-    for expense in expenses:
-        expense_data = {
-            "id": expense.id,
-            "title": expense.title,
-            "description": expense.description,
-            "amount": float(expense.amount),
-            "currency": expense.currency,
-            "category": expense.category,
-            "status": expense.status,
-            "expense_date": expense.expense_date.isoformat(),
-            "paid_by": getattr(expense, "payer_name", None) or f"User {expense.paid_by}",
-            "members": [f"User {m.user_id}" for m in expense.members if m.is_included],
+    # --- Build Expense Data ---
+    expense_list = []
+    for e in expenses:
+        expense_list.append({
+            "id": e.id,
+            "title": e.title,
+            "description": e.description,
+            "amount": float(e.amount),
+            "currency": e.currency,
+            "category": e.category.value,
+            "status": e.status.value,
+            "expense_date": e.expense_date.isoformat(),
+            "paid_by": e.payer_name or f"User {e.paid_by}",
+            "members": [
+                m.user_name or f"User {m.user_id}"
+                for m in e.members if m.is_included
+            ],
             "splits": [
                 {
                     "user_id": s.user_id,
+                    "user_name": s.user_name or f"User {s.user_id}",
                     "amount": float(s.amount),
-                    "is_paid": s.is_paid
+                    "is_paid": s.is_paid,
                 }
-                for s in expense.splits
+                for s in e.splits
             ]
-        }
-        export_data["expenses"].append(expense_data)
+        })
 
+    # --- Summary (reuse your summary function) ---
+    summary = await get_trip_expense_summary(session, trip_id)
+
+    # --- Balances ---
+    balances = []
     if include_balances:
-        balances = await calculate_user_balances(session, trip_id)
-        export_data["user_balances"] = [
+        balances = [
             {
                 "user_id": b.user_id,
                 "user_name": b.user_name,
                 "total_paid": float(b.total_paid),
                 "total_owed": float(b.total_owed),
-                "net_balance": float(b.net_balance)
+                "net_balance": float(b.net_balance),
             }
-            for b in balances
+            for b in summary.user_balances
         ]
 
+    # --- Settlements ---
+    settlements = []
     if include_settlements:
-        settlements = await calculate_settlements_needed(session, trip_id)
-        export_data["settlements_needed"] = [
+        settlements = [
             {
                 "from_user_id": s.from_user_id,
-                "from_user_name": s.from_user_name,
+                "from_user_name": s.from_user_name or f"User {s.from_user_id}",
                 "to_user_id": s.to_user_id,
-                "to_user_name": s.to_user_name,
+                "to_user_name": s.to_user_name or f"User {s.to_user_id}",
                 "amount": float(s.amount),
-                "currency": s.currency
+                "currency": s.currency,
+                "is_confirmed": getattr(s, "is_confirmed", None)
             }
-            for s in settlements
+            for s in summary.settlements_needed
         ]
+
+    # --- Final Export ---
+    export_data = {
+        "metadata": {
+            "trip_id": trip_id,
+            "export_date": datetime.utcnow().isoformat(),
+            "currency": summary.currency,
+            "filters": {
+                "date_from": date_from.isoformat() if date_from else None,
+                "date_to": date_to.isoformat() if date_to else None,
+                "categories": [c.value for c in categories] if categories else None,
+            },
+        },
+        "summary": {
+            "total_expenses": float(summary.total_expenses),
+            "total_settled": float(summary.total_settled),
+            "total_pending": float(summary.total_pending),
+            "by_category": summary.expenses_by_category,
+            "by_status": summary.expenses_by_status,
+        },
+        "expenses": expense_list,
+        "user_balances": balances,
+        "settlements_needed": settlements,
+    }
 
     return export_data
