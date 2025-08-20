@@ -48,6 +48,9 @@ class Service(Base):
         Index("ix_service_type", "type"),
         Index("ix_service_location", "location"),
     )
+    @property
+    def provider_name(self):
+        return self.provider.name if self.provider else None
 
 
 class TripSelectedService(Base):

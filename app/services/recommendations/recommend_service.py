@@ -11,8 +11,8 @@ from app.core.logger import logger
 from app.models.trips.trip_member_preference import TripMemberPreference
 from collections import Counter
 from app.models.service.recommendation_models import TripRecommendedService, TripServiceVote
-from app.models.service.service_provider import Service
-from sqlalchemy.orm import joinedload
+from app.models.service.service_provider import Service,TripSelectedService
+from sqlalchemy.orm import joinedload,selectinload
 from app.schemas.recommendation.recommendation import TripRecommendedListResponse, TripRecommendedOption, RecommendedService
 
 async def generate_recommendations_for_trip(
@@ -147,7 +147,7 @@ async def get_vote_counts(session: AsyncSession, trip_id: int, service_type: str
 async def confirm_selection(session: AsyncSession, trip_id: int, service_type: str, service_id: int, notes: str | None = None):
     # Store final selection using existing TripSelectedService model
     # Optional: you could store per-category; here we just insert another selected_service row
-    from app.models.service.service_provider import TripSelectedService  # avoid circular import
+     # avoid circular import
 
     session.add(TripSelectedService(trip_id=trip_id, service_id=service_id, custom_notes=notes))
     await session.commit()
@@ -199,3 +199,16 @@ async def get_persisted_recommendations_with_votes(
         service_type=service_type,
         options=options
     )
+
+
+async def get_selected_services(
+    db: AsyncSession,
+    trip_id: int
+):
+    result = await db.execute(
+        select(TripSelectedService)
+        .options(selectinload(TripSelectedService.service)
+        .selectinload(Service.provider))
+        .where(TripSelectedService.trip_id == trip_id)
+    )
+    return result.scalars().all()

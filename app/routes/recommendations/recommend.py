@@ -2,10 +2,10 @@
 
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from typing import List
 from app.core.database import get_db
-from app.schemas.recommendation.recommendation import RecommendationResponse, VoteRequest, VoteSummaryResponse, VoteCount, TripSelectionRequest, TripRecommendedListResponse
-from app.services.recommendations.recommend_service import generate_recommendations_for_trip, cast_vote, get_vote_counts, confirm_selection, get_persisted_recommendations_with_votes
+from app.schemas.recommendation.recommendation import RecommendationResponse, VoteRequest, VoteSummaryResponse, VoteCount, TripSelectionRequest, TripRecommendedListResponse,TripSelectedServiceOut
+from app.services.recommendations.recommend_service import generate_recommendations_for_trip, cast_vote, get_vote_counts, confirm_selection, get_persisted_recommendations_with_votes,get_selected_services
 from app.dependencies.auth import get_current_user
 from app.models.user.user import User
 
@@ -58,3 +58,13 @@ async def confirm_trip_service(
 ):
     await confirm_selection(session, trip_id, payload.service_type, payload.service_id, payload.notes)
     return {"status": "confirmed"}
+
+@router.get("/{trip_id}/services/selected", response_model=List[TripSelectedServiceOut])
+async def fetch_selected_services(
+    trip_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # (optional) check if current_user is part of trip before showing services
+    services = await get_selected_services(db, trip_id)
+    return services
