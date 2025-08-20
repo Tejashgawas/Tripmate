@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, insert
 from fastapi import HTTPException
 from app.models import Trip
-from app.schemas.recommendation.recommendation import RecommendationResponse
+from app.schemas.recommendation.recommendation import RecommendationResponse,ProviderOut
 from app.services.recommendations.internal_query import get_services_for_trip
 from app.services.recommendations.rule_engine import group_and_select_top_services
 from app.core.logger import logger
@@ -186,7 +186,7 @@ async def get_persisted_recommendations_with_votes(
                     type=svc.type,
                     price=svc.price,
                     rating=svc.rating,
-                    provider_name=svc.provider.name if svc.provider else None,
+                    provider=ProviderOut.from_orm(svc.provider) if svc.provider else None,
                     location=svc.location,
                     is_available=svc.is_available,
                     features=svc.features,
