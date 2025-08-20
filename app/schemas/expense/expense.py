@@ -197,3 +197,19 @@ class ExpenseExportRequest(BaseModel):
     date_from: Optional[datetime] = None
     date_to: Optional[datetime] = None
     categories: Optional[List[ExpenseCategory]] = None
+
+class ExpenseSettlementOut(BaseModel):
+    id: int
+    trip_id: Optional[int]
+    from_user_id: int
+    from_user_name: Optional[str]
+    to_user_id: int
+    to_user_name: Optional[str]
+    amount: Decimal
+    currency: str
+    settlement_date: datetime
+    notes: Optional[str]
+    is_confirmed: bool
+
+    class Config:
+        orm_mode = True

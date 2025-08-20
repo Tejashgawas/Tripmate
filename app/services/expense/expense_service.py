@@ -451,6 +451,42 @@ async def create_settlement(
     return result.scalar_one()
 
 
+async def get_from_user_settlement(
+    session: AsyncSession,
+    user_id: int
+):
+    result = await session.execute(
+        select(ExpenseSettlement)
+        .options(
+            selectinload(ExpenseSettlement.from_user),
+            selectinload(ExpenseSettlement.to_user)
+        )
+        .where(ExpenseSettlement.from_user_id == user_id)
+    )
+
+    return result.scalars().all()
+
+async def get_to_user_pending_settlement(
+    session: AsyncSession,
+    user_id: int
+):
+    result = await session.execute(
+        select(ExpenseSettlement)
+        .options(
+            selectinload(ExpenseSettlement.from_user),
+            selectinload(ExpenseSettlement.to_user)
+        )
+        .where(ExpenseSettlement.to_user_id == user_id,
+                ExpenseSettlement.is_confirmed == False)
+    )
+
+    return result.scalars().all()
+
+
+
+
+
+
 async def confirm_settlement(
     session: AsyncSession,
     settlement_id: int,

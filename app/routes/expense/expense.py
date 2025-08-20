@@ -12,13 +12,13 @@ from app.schemas.expense.expense import (
     ExpenseSplitCreate, ExpenseSplitResponse, ExpenseSplitUpdate,
     ExpenseSettlementCreate, ExpenseSettlementResponse, ExpenseSettlementUpdate,
     UserBalance, SettlementSummary, TripExpenseSummary, BulkExpenseSplit,
-    BulkExpenseStatusUpdate, ExpenseExportRequest
+    BulkExpenseStatusUpdate, ExpenseExportRequest,ExpenseSettlementOut
 )
 from app.services.expense.expense_service import (
     create_expense, get_expense, get_trip_expenses, update_expense, delete_expense,
     update_expense_splits, mark_split_paid, calculate_user_balances,
     calculate_settlements_needed, create_settlement, confirm_settlement,
-    get_trip_expense_summary, export_expense_report
+    get_trip_expense_summary, export_expense_report,get_from_user_settlement,get_to_user_pending_settlement
 )
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select
@@ -317,3 +317,22 @@ async def get_expense_statuses():
 async def get_supported_currencies():
     """Get supported currencies."""
     return ["USD", "EUR", "GBP", "INR", "CAD", "AUD"]  # Add more as needed
+
+# 1. Get all settlements created by current user
+@router.get("/from/settlement", response_model=List[ExpenseSettlementOut])
+async def fetch_user_created_settlements(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    settlements = await get_from_user_settlement(db, current_user.id)
+    return settlements
+
+
+# 2. Get only pending settlements where current user is receiver
+@router.get("/to/pending", response_model=List[ExpenseSettlementOut])
+async def fetch_user_pending_settlements(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    settlements = await get_to_user_pending_settlement(db, current_user.id)
+    return settlements
