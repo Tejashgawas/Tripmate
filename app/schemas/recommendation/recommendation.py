@@ -2,13 +2,22 @@ from pydantic import BaseModel, Field
 from typing import Optional, Any, List
 from datetime import datetime
 
+
+class ProviderOut(BaseModel):
+    id: int
+    name: str
+    contact_phone: Optional[str]
+
+    class Config:
+        from_attributes = True
+
 class RecommendedService(BaseModel):
     id: int
     title: str
     type: str
     price: Optional[float]
     rating: Optional[float]
-    provider_name: Optional[str]
+    provider: ProviderOut
     location: Optional[str]
     is_available: Optional[bool]
     features: Optional[Any]
@@ -59,3 +68,18 @@ class TripRecommendedListResponse(BaseModel):
     trip_id: int
     service_type: str
     options: List[TripRecommendedOption]
+
+
+
+
+class TripSelectedServiceOut(BaseModel):
+    id: int
+    trip_id: int
+    service_id: int
+    selected_on: datetime
+    custom_notes: Optional[str]
+    service: RecommendedService   # nested service details
+
+    class Config:
+        from_attributes = True
+
