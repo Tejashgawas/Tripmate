@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # Default to 7 days
 
     # Cookie settings
-    COOKIE_SECURE: bool = True  # set True in prod (HTTPS)
+    COOKIE_SECURE: bool = False  # set True in prod (HTTPS)
     COOKIE_DOMAIN: Optional[str] = None # Optional, can be set to None
 
     MAX_CONCURRENT_REFRESHES: int = 3  # Default to 3
