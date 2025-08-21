@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 import os
-from typing import List
+from typing import List,Optional
 
 load_dotenv()  # ✅ This makes sure your updated .env is loaded
 
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     # Cookie settings
     COOKIE_SECURE: bool = True  # set True in prod (HTTPS)
-    COOKIE_DOMAIN: str = None  # Optional, can be set to None
+    COOKIE_DOMAIN: Optional[str] = None # Optional, can be set to None
 
     MAX_CONCURRENT_REFRESHES: int = 3  # Default to 3
 
