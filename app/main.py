@@ -23,12 +23,15 @@ app = FastAPI(
 #     )
 
 # Set all CORS enabled origins
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+   
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=(
-        r"^(http:\/\/localhost(:\d{1,5})?|http:\/\/127\.0\.0\.1(:\d{1,5})?"
-        r"|https:\/\/preview-tripmate-[a-z0-9]+\.vusercontent\.net)$"
-    ),
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

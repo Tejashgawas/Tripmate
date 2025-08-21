@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     # Cookie settings
     COOKIE_SECURE: bool = True  # set True in prod (HTTPS)
-    COOKIE_DOMAIN: str = "tripmate-39hm.onrender.com"   # Optional, can be set to None
+    COOKIE_DOMAIN: str = None  # Optional, can be set to None
 
     MAX_CONCURRENT_REFRESHES: int = 3  # Default to 3
 
