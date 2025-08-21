@@ -9,6 +9,7 @@ from app.routes.services import service_provider
 
 from app.routes.expense import expense
 from app.routes.auth import password_reset as password_reset_router
+from app.routes.services import service_analytics
 
 api_router = APIRouter()
 
@@ -17,6 +18,7 @@ api_router = APIRouter()
 api_router.include_router(auth.router)
 api_router.include_router(profile.router)
 api_router.include_router(password_reset_router.router)
+
 
 
 # Alias /users for /users/me endpoints
@@ -96,3 +98,6 @@ api_router.include_router(expense.router)
 # Feedback routes
 from app.routes.feedback import feedback_routes
 api_router.include_router(feedback_routes.router)
+
+# analytics route
+api_router.include_router(service_analytics.router)

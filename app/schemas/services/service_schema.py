@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field,EmailStr
-from typing import Optional, List,Any,Literal
+from typing import Optional, List,Any,Literal,Union
 from datetime import datetime
 
 
@@ -30,7 +30,7 @@ class ServiceBase(BaseModel):
     location: Optional[str]
     price: Optional[float]
     rating: Optional[float] = None  # optional for services without ratings
-    features: Optional[dict]  # flexible structure: JSON
+    features: Optional[Union[dict, list[str]]]=None  # flexible structure: JSON
     is_available: Optional[bool] = True
 
 class ServiceCreate(ServiceBase):
@@ -51,7 +51,7 @@ class ServiceUpdate(BaseModel):
     rating: Optional[float] = None
     location: Optional[str] = None
     price: Optional[float] = None
-    features: Optional[dict] = None
+    features: Optional[Union[dict, list[str]]]=None # ✅ accept dict OR list
     is_available: Optional[bool] = None
 
 
