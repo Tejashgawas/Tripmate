@@ -124,8 +124,12 @@ async def google_callback(
    
 
     user_data = await auth_service.handle_google_callback(request, db,cache, redis_client)
-    #set access token
-    response.set_cookie(
+    redirect_response = RedirectResponse(
+            f"https://tripmate-v1.vercel.app/dashboard?new_user={user_data['is_new_user']}"
+        )
+
+    # Access token cookie
+    redirect_response.set_cookie(
         key="access_token",
         value=user_data["access_token"],
         httponly=True,
@@ -134,9 +138,10 @@ async def google_callback(
         samesite="none",
         domain=settings.COOKIE_DOMAIN,
         path="/"
-        )
-    # Set refresh cookie on response from returned refresh token
-    response.set_cookie(
+    )
+
+    # Refresh token cookie
+    redirect_response.set_cookie(
         key=settings.REFRESH_COOKIE_NAME,
         value=user_data["refresh_token"],
         httponly=True,
@@ -146,14 +151,8 @@ async def google_callback(
         domain=settings.COOKIE_DOMAIN,
         path="/",
     )
-    print({
-        "message": "login through google successful",
-        "ok": True,
-        "new_user": user_data["is_new_user"]
-    })
-    return RedirectResponse(
-        f"https://tripmate-v1.vercel.app/dashboard?new_user={user_data['is_new_user']}"
-    )
+
+    return redirect_response
    
 
 
