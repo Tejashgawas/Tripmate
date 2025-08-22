@@ -151,7 +151,7 @@ async def google_callback(
         "ok": True,
         "new_user": user_data["is_new_user"]
     })
-    return RedirectResponse("http://localhost:3000/login")
+    return RedirectResponse("http://localhost:3000/dashboard")
    
 
 
