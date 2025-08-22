@@ -26,6 +26,8 @@ app = FastAPI(
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://tripmate-frontend-gold.vercel.app/",
+    "https://tripmate-v1.vercel.app/"
    
 ]
 
