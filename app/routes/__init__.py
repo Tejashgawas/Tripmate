@@ -10,6 +10,7 @@ from app.routes.services import service_provider
 from app.routes.expense import expense
 from app.routes.auth import password_reset as password_reset_router
 from app.routes.services import service_analytics
+from app.routes.admin import admin_analytics
 
 api_router = APIRouter()
 
@@ -101,3 +102,6 @@ api_router.include_router(feedback_routes.router)
 
 # analytics route
 api_router.include_router(service_analytics.router)
+
+#admmin
+api_router.include_router(admin_analytics.router)

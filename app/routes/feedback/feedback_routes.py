@@ -85,7 +85,7 @@ async def update_existing_feedback(
 ):
     """Update a feedback"""
     feedback = await get_feedback(session, feedback_id)
-    if feedback.user_id != current_user.id and not current_user.is_admin:
+    if feedback.user_id != current_user.id and current_user.role != UserRole.admin:
         raise HTTPException(
             status_code=403,
             detail="You don't have permission to update this feedback"
