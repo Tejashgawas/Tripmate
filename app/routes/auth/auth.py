@@ -15,7 +15,7 @@ import uuid
 from app.utils.Oauth.googleauth import generate_nonce
 from app.core.cache import RedisCache
 from app.core.redis_lifecyle import get_cache
-
+from fastapi.responses import RedirectResponse
 router = APIRouter(prefix="/auth",tags=["Auth"])
 
 @router.post("/register",response_model=UserOut)
@@ -146,7 +146,13 @@ async def google_callback(
         domain=settings.COOKIE_DOMAIN,
         path="/",
     )
-    return {"message":"login through google successful","ok":True,"new_user":user_data["is_new_user"]}
+    print({
+        "message": "login through google successful",
+        "ok": True,
+        "new_user": user_data["is_new_user"]
+    })
+    return RedirectResponse(" http://localhost:3000/login")
+   
 
 
 @router.post("/choose-role")
