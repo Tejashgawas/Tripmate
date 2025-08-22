@@ -152,7 +152,7 @@ async def google_callback(
         "new_user": user_data["is_new_user"]
     })
     return RedirectResponse(
-        f"http://localhost:3000/dashboard?new_user={user_data['is_new_user']}"
+        f"https://tripmate-v1.vercel.app/dashboard?new_user={user_data['is_new_user']}"
     )
    
 
