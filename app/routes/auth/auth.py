@@ -34,19 +34,31 @@ async def register(
     )
 
 @router.post("/login")
-async def login(
-    user: UserLogin,
+async def login_route(
+    user_data: UserLogin,
     response: Response,
     db: AsyncSession = Depends(get_db),
     redis_client = Depends(get_redis_client)
 ):
-    return await auth_service.login_user(user.email, user.password, db, response, redis_client)
+    # Remove response parameter from service call
+    tokens = await auth_service.login_user(
+        user_data.email, 
+        user_data.password, 
+        db, 
+        redis_client
+    )
+    return tokens  # Return tokens directly
+
 
 @router.post("/refresh")
-async def refresh_token_route(request: Request, response: Response,redis_client = Depends(get_redis_client)):
-    # Read refresh token from HTTP-only cookie
-    refresh_token = request.cookies.get(settings.REFRESH_COOKIE_NAME)
-    # print(refresh_token)
+async def refresh_token_route(
+    request: Request, 
+    response: Response,
+    redis_client = Depends(get_redis_client)
+):
+    # Get refresh token from request body instead of cookie
+    body = await request.json()
+    refresh_token = body.get("refresh_token")
     
     if not refresh_token:
         raise HTTPException(
@@ -54,10 +66,9 @@ async def refresh_token_route(request: Request, response: Response,redis_client 
             detail="Refresh token missing"
         )
     
-    # Call service logic
-    new_access_return = await auth_service.refresh_access_token(response,refresh_token,redis_client)
-    return new_access_return
-
+    # Call service logic (modified to return tokens instead of setting cookies)
+    tokens = await auth_service.refresh_access_token(refresh_token, redis_client)
+    return tokens
 
 @router.post("/logout")
 async def logout(
@@ -114,47 +125,23 @@ async def google_login(request: Request,redis_client = Depends(get_redis_client)
 
 @router.get("/google/callback")
 async def google_callback(
-        response: Response,
-        request: Request,
-        db: AsyncSession = Depends(get_db),
-        redis_client = Depends(get_redis_client),
-        cache = Depends(get_cache)
-        
-    ):
-   
-
-    user_data = await auth_service.handle_google_callback(request, db,cache, redis_client)
+    response: Response,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis_client = Depends(get_redis_client),
+    cache = Depends(get_cache)
+):
+    user_data = await auth_service.handle_google_callback(request, db, cache, redis_client)
+    
+    # Return tokens in URL instead of cookies
     redirect_response = RedirectResponse(
-            f"https://tripmate-v1.vercel.app/login?new_user={user_data['is_new_user']}"
-           
-        )
-
-    # Access token cookie
-    redirect_response.set_cookie(
-        key="access_token",
-        value=user_data["access_token"],
-        httponly=True,
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        secure=settings.COOKIE_SECURE,
-        samesite="none",
-        domain=settings.COOKIE_DOMAIN,
-        path="/"
+        f"https://tripmate-v1.vercel.app/login?"
+        f"new_user={user_data['is_new_user']}&"
+        f"access_token={user_data['access_token']}&"
+        f"refresh_token={user_data['refresh_token']}"
     )
-
-    # Refresh token cookie
-    redirect_response.set_cookie(
-        key=settings.REFRESH_COOKIE_NAME,
-        value=user_data["refresh_token"],
-        httponly=True,
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
-        secure=settings.COOKIE_SECURE,
-        samesite="none",
-        domain=settings.COOKIE_DOMAIN,
-        path="/",
-    )
-
+    
     return redirect_response
-   
 
 
 @router.post("/choose-role")

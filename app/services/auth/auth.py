@@ -41,63 +41,44 @@ async def register_user(user_data:UserCreate,db:AsyncSession):
     await db.refresh(new_user)
     return new_user
 
+
 async def login_user(
     email: str,
     password: str,
     db: AsyncSession,
-    response: Response,
     redis_client
 ):
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar()
+    
     if not user:
-        raise HTTPException(status_code=401,detail="user not registered.")
+        raise HTTPException(status_code=401, detail="User not registered.")
 
     if user.auth_type != "local":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User registered with different auth method"
         )
+    
     if not user.hashed_password:
         raise HTTPException(400, "User has no password set")
 
-    if not user or not verify_password(password,user.hashed_password):
-        raise HTTPException(status_code=401,detail="Invalid credentials")
+    if not verify_password(password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    token = create_access_token(data={"sub":str(user.id)})
+    token = create_access_token(data={"sub": str(user.id)})
+    refresh_token_str = await refresh_token(str(user.id), redis_client)
 
-    user_id = str(user.id)
-    refreshtoken = await refresh_token(user_id,redis_client)
-    max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
-       # Cookie: Access token
-    
-    response.set_cookie(
-        key="access_token",
-        value=token,
-        httponly=True,
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        secure=settings.COOKIE_SECURE,
-        samesite="none",
-        domain=settings.COOKIE_DOMAIN,
-        path="/"
-        )
-    
-    response.set_cookie(
-        key=settings.REFRESH_COOKIE_NAME,
-        value=refreshtoken,
-        httponly=True,
-        max_age=max_age,
-        secure=settings.COOKIE_SECURE,
-        samesite="none",
-        domain=settings.COOKIE_DOMAIN,
-        path="/",
-    )
+    # Return tokens instead of setting cookies
+    return {
+        "access_token": token,
+        "refresh_token": refresh_token_str,
+        "token_type": "bearer",
+        "role": user.role
+    }
 
 
-    return {"role": user.role}
-
-
-async def refresh_access_token(response: Response,refresh_token: str,redis_client) -> str:
+async def refresh_access_token(refresh_token: str, redis_client) -> dict:
     try:
         payload = jwt.decode(
             refresh_token,
@@ -125,24 +106,19 @@ async def refresh_access_token(response: Response,refresh_token: str,redis_clien
     
     # Generate new access token
     new_access_token = create_access_token({"sub": user_id})
-    # Update access_token cookie
-    response.set_cookie(
-        key="access_token",
-        value=new_access_token,
-        httponly=True,
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        secure=settings.COOKIE_SECURE,
-        samesite="none",
-        domain=settings.COOKIE_DOMAIN,
-        path="/"
-    )
-    return {"message": "Access token refreshed"}
-
+    
+    # Return tokens instead of setting cookies
+    return {
+        "access_token": new_access_token,
+        "refresh_token": refresh_token,  # Keep same refresh token
+        "token_type": "bearer"
+    }
 
 async def logout_user(
     refresh_token: Optional[str],
     all_sessions: bool = False
 ) -> dict:
+    # Same logic, just doesn't need to clear cookies
     if not refresh_token:
         return {"ok": True}
 
@@ -167,7 +143,7 @@ async def logout_user(
         if jti:
             await revoke_refresh_token(user_id, jti)
 
-    return {"ok": True,"message":"logout successfull"}
+    return {"ok": True, "message": "Logout successful"}
 
 
 async def handle_google_callback(request, db: AsyncSession, cache: RedisCache, redis_client):
