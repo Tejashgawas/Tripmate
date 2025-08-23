@@ -1,7 +1,43 @@
 # Tripmate
 Tripmate Backend Rest API: A Smart group Travel Platform
-## 📊 Performance Benchmark
 
+📖 API Documentation
+Already live TEST all enpoints here : https://tripmate-39hm.onrender.com/docs
+
+## 🛠️ Tech Stack
+- **Framework**: FastAPI (async)
+- **Database**: PostgreSQL + SQLAlchemy ORM (async)
+- **Auth**: JWT + OAuth2 (Google)
+- **Caching**: Redis
+- **Deployment**: Render (with CI/CD planned)
+- **Others**: Alembic (migrations), Pydantic (schemas)
+
+### Prerequisites
+- Python 3.10+
+- PostgreSQL
+- Redis
+
+### Setup
+```bash
+# Clone repo
+git clone https://github.com/Tejashgawas/Tripmate.git
+cd Tripmate
+
+```
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate   # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run migrations
+alembic upgrade head
+
+# Start FastAPI server
+uvicorn app.main:app --reload
+
+## 📊 Performance Benchmark
 TripMate backend was tested using **Locust** with authenticated GET endpoints for a general user role.
 
 ### Summary Metrics
@@ -33,3 +69,12 @@ Tested on:
 | `/trips/16` | 50.08 | 50.16 | ~0% |
 
 > Note: Negative/zero improvement indicates small payloads where caching overhead may outweigh DB retrieval time.
+>
+
+👨‍💻 Author
+
+Built with ❤️ by Tejas Gawas
+
+📜 License
+
+MIT License
