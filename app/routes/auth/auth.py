@@ -135,7 +135,8 @@ async def google_callback(
     
     # Return tokens in URL instead of cookies
     redirect_response = RedirectResponse(
-        f"https://tripmate-v1.vercel.app/login?"
+        # f"https://tripmate-v1.vercel.app/login?"
+        f"http://localhost:3000//login?"
         f"new_user={user_data['is_new_user']}&"
         f"access_token={user_data['access_token']}&"
         f"refresh_token={user_data['refresh_token']}"
