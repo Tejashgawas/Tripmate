@@ -125,7 +125,7 @@ async def google_callback(
 
     user_data = await auth_service.handle_google_callback(request, db,cache, redis_client)
     redirect_response = RedirectResponse(
-            f"https://tripmate-v1.vercel.app/dashboard?new_user={user_data['is_new_user']}"
+            f"https://tripmate-v1.vercel.app/login?new_user={user_data['is_new_user']}"
         )
 
     # Access token cookie
