@@ -53,12 +53,7 @@ async def list_all_feedbacks(
     current_user: User = Depends(require_role(UserRole.admin)),
     session: AsyncSession = Depends(get_db)
 ):
-    # """Get all feedbacks (admin only)"""
-    # if not current_user:
-    #     raise HTTPException(
-    #         status_code=403,
-    #         detail="Only administrators can view all feedbacks"
-    #     )
+   
     feedbacks, total = await get_all_feedbacks(session, skip, limit, status)
     return adminFeedbackListResponse(total=total, feedbacks=feedbacks)
 

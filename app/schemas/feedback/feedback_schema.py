@@ -52,7 +52,7 @@ class adminFeedbackResponse(FeedbackBase):
 
 class adminFeedbackListResponse(BaseModel):
     total: int
-    feedbacks: list[FeedbackResponse]
+    feedbacks: list[adminFeedbackResponse]
 
     class Config:
         from_attributes = True
