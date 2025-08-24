@@ -53,18 +53,29 @@ class AdminAnalyticsService:
         return await session.scalar(query)
 
     @staticmethod
-    async def get_daily_user_registrations(session: AsyncSession, days: int = 7):
+    async def get_daily_user_registrations_with_users(session: AsyncSession, days: int = 7):
         cutoff_date = datetime.utcnow() - timedelta(days=days)
 
         query = (
             select(
                 func.date(User.created_at).label("date"),
-                func.count(User.id).label("count")
+                User.username,
+                User.email
             )
             .where(User.created_at >= cutoff_date)
-            .group_by(func.date(User.created_at))
             .order_by(func.date(User.created_at))
         )
 
         result = await session.execute(query)
-        return result.all()  # list of (date, count)
+        rows = result.all()  # [(date, username, email), ...]
+
+        # Group by date
+        registrations = {}
+        for row in rows:
+            d, username, email = row
+            if d not in registrations:
+                registrations[d] = {"count": 0, "users": []}
+            registrations[d]["count"] += 1
+            registrations[d]["users"].append({"username": username, "email": email})
+
+        return registrations
