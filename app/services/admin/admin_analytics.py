@@ -45,3 +45,26 @@ class AdminAnalyticsService:
             "total_services": total_services,
             "total_trips": total_trips
         }
+
+    @staticmethod
+    async def get_new_users_count(session: AsyncSession, days: int = 7) -> int:
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        query = select(func.count()).select_from(User).where(User.created_at >= cutoff_date)
+        return await session.scalar(query)
+
+    @staticmethod
+    async def get_daily_user_registrations(session: AsyncSession, days: int = 7):
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+
+        query = (
+            select(
+                func.date(User.created_at).label("date"),
+                func.count(User.id).label("count")
+            )
+            .where(User.created_at >= cutoff_date)
+            .group_by(func.date(User.created_at))
+            .order_by(func.date(User.created_at))
+        )
+
+        result = await session.execute(query)
+        return result.all()  # list of (date, count)
