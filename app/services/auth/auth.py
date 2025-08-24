@@ -14,6 +14,7 @@ from app.utils.Oauth.googleauth import oauth
 from fastapi.responses import RedirectResponse
 from sqlalchemy import update
 from app.core.cache import RedisCache
+from sqlalchemy.exc import IntegrityError
 
 
 
@@ -21,6 +22,12 @@ async def register_user(user_data:UserCreate,db:AsyncSession):
     result = await db.execute(select(User).where(User.email == user_data.email))
     if result.scalar():
         raise HTTPException(status_code=400,detail="Email already registered")
+    
+    # Check for duplicate username
+    result = await db.execute(select(User).where(User.username == user_data.username))
+    if result.scalar():
+        raise HTTPException(status_code=400, detail="Username already taken")
+
     
     if user_data.role == "admin":
         raise HTTPException(status_code=403, detail="Not allowed to register as admin")
@@ -37,8 +44,14 @@ async def register_user(user_data:UserCreate,db:AsyncSession):
         )
     
     db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
+    try:
+        await db.commit()
+        await db.refresh(new_user)
+    except IntegrityError:
+        # Fallback in case of race condition between the two queries above
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Email or username already exists")
+
     return new_user
 
 
