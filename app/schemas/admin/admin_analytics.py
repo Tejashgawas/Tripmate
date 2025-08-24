@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import date
-
+from typing import List
 class AdminAnalyticsResponse(BaseModel):
     total_active_users: int
     total_service_providers: int
