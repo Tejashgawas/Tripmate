@@ -19,15 +19,24 @@ class FeedbackUpdate(BaseModel):
     category: Optional[str] = None
     status: Optional[str] = Field(None, pattern="^(pending|reviewed|addressed)$")
 
+class UserResponse(BaseModel):
+    username: str
+    email: str
+
+    class Config:
+        from_attributes = True
+
 class FeedbackResponse(FeedbackBase):
     id: int
     user_id: int
     status: str
     created_at: datetime
     updated_at: datetime
+    user: Optional[UserResponse]   # 👈 nested user
 
     class Config:
         from_attributes = True
+
 
 class FeedbackListResponse(BaseModel):
     total: int
