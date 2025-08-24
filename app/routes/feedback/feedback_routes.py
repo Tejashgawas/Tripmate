@@ -60,7 +60,7 @@ async def list_all_feedbacks(
     #         detail="Only administrators can view all feedbacks"
     #     )
     feedbacks, total = await get_all_feedbacks(session, skip, limit, status)
-    return FeedbackListResponse(total=total, feedbacks=feedbacks)
+    return adminFeedbackListResponse(total=total, feedbacks=feedbacks)
 
 @router.get("/{feedback_id}", response_model=FeedbackResponse)
 async def get_single_feedback(
