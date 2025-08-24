@@ -32,11 +32,30 @@ class FeedbackResponse(FeedbackBase):
     status: str
     created_at: datetime
     updated_at: datetime
-    user: Optional[UserResponse]   # 👈 nested user
+    
 
     class Config:
         from_attributes = True
 
+
+class adminFeedbackResponse(FeedbackBase):
+    id: int
+    user_id: int
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    user: Optional[UserResponse] 
+    
+
+    class Config:
+        from_attributes = True
+
+class adminFeedbackListResponse(BaseModel):
+    total: int
+    feedbacks: list[FeedbackResponse]
+
+    class Config:
+        from_attributes = True
 
 class FeedbackListResponse(BaseModel):
     total: int

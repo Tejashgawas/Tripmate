@@ -6,7 +6,8 @@ from app.schemas.feedback.feedback_schema import (
     FeedbackCreate,
     FeedbackUpdate,
     FeedbackResponse,
-    FeedbackListResponse
+    FeedbackListResponse,
+    adminFeedbackListResponse
 )
 from app.services.feedback.feedback_service import (
     create_feedback,
@@ -44,7 +45,7 @@ async def list_user_feedbacks(
     feedbacks, total = await get_user_feedbacks(session, current_user.id, skip, limit)
     return FeedbackListResponse(total=total, feedbacks=feedbacks)
 
-@router.get("/all", response_model=FeedbackListResponse)
+@router.get("/all", response_model=adminFeedbackListResponse)
 async def list_all_feedbacks(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
